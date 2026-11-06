@@ -8,9 +8,23 @@ import { AuthRequest } from '../middleware/authMiddleware';
 export const getSessions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?._id;
+    const userRole = req.user?.role;
     const { status } = req.query;
 
-    const filter: any = userId ? { $or: [{ mentor: userId }, { learner: userId }] } : {};
+    let filter: any = {};
+    if (userRole === 'mentor') {
+      // Mentors strictly retrieve only sessions they are teaching
+      filter = { mentor: userId };
+    } else if (userRole === 'learner') {
+      // Learners strictly retrieve only sessions they are attending
+      filter = { learner: userId };
+    } else if (userRole === 'admin') {
+      // Admins can see all platform sessions
+      filter = {};
+    } else {
+      filter = { $or: [{ mentor: userId }, { learner: userId }] };
+    }
+
     if (status && status !== 'all') {
       filter.status = status;
     }

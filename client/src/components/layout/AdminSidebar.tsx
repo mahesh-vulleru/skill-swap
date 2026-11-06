@@ -8,24 +8,22 @@ import {
   Flag,
   Settings,
   FileText,
-  ArrowLeft,
   LogOut,
   X,
-  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { Avatar } from '../common/Avatar';
 
 export const AdminSidebar: React.FC = () => {
-  const { user, logout, switchDemoUser } = useAuth();
+  const { user, logout } = useAuth();
   const { isOpen, closeSidebar } = useSidebar();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     closeSidebar();
     logout();
-    navigate('/');
+    navigate('/login');
   };
 
   const navItemClass = ({ isActive }: { isActive: boolean }) =>
@@ -84,20 +82,6 @@ export const AdminSidebar: React.FC = () => {
             aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Return to Standard User Portal Button */}
-        <div className="p-3 border-b border-purple-900/50 bg-purple-950">
-          <button
-            onClick={() => {
-              closeSidebar();
-              navigate('/dashboard');
-            }}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-emerald-200 bg-forest-800/80 hover:bg-forest-700 border border-forest-600 transition-colors shadow-xs"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to User View</span>
           </button>
         </div>
 
@@ -165,35 +149,9 @@ export const AdminSidebar: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-purple-900/40 p-2.5 rounded-xl border border-purple-800/50">
-            <p className="text-[10px] font-bold text-purple-300 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-action" /> Switch Demo Account:
-            </p>
-            <div className="grid grid-cols-3 gap-1 text-[11px] font-bold">
-              <button
-                onClick={() => { switchDemoUser('mentor'); closeSidebar(); navigate('/dashboard'); }}
-                className="py-1 px-1.5 bg-forest-800 hover:bg-forest-700 rounded text-center text-white"
-              >
-                Mentor
-              </button>
-              <button
-                onClick={() => { switchDemoUser('learner'); closeSidebar(); navigate('/dashboard'); }}
-                className="py-1 px-1.5 bg-forest-800 hover:bg-forest-700 rounded text-center text-white"
-              >
-                Learner
-              </button>
-              <button
-                onClick={() => { switchDemoUser('admin'); closeSidebar(); }}
-                className="py-1 px-1.5 bg-purple-700 hover:bg-purple-600 rounded text-center text-white"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
-
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-rose-200 hover:text-white bg-rose-950/40 hover:bg-rose-900/60 border border-rose-900/40 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-200 hover:text-white bg-rose-950/40 hover:bg-rose-900/60 border border-rose-900/40 transition-colors shadow-xs"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>

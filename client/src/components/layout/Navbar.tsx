@@ -5,9 +5,23 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
 
 export const Navbar: React.FC = () => {
-  const { user, switchDemoUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleGoToDashboard = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role === 'admin') {
+      navigate('/admin');
+    } else if (user.role === 'mentor') {
+      navigate('/mentor/dashboard');
+    } else {
+      navigate('/learner/dashboard');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200/80">
@@ -45,39 +59,11 @@ export const Navbar: React.FC = () => {
           </a>
         </nav>
 
-        {/* Auth CTA & Demo Switcher */}
+        {/* Auth CTA */}
         <div className="hidden md:flex items-center gap-4">
-          {/* Quick Demo Switcher */}
-          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs">
-            <span className="text-stone-500 font-medium px-2 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-forest-600" /> Demo:
-            </span>
-            <button
-              onClick={() => { switchDemoUser('mentor'); navigate('/dashboard'); }}
-              className="px-2.5 py-1 rounded-lg bg-white hover:bg-forest-50 text-forest-800 font-semibold shadow-xs"
-              title="Log in as Elena (Top Mentor)"
-            >
-              Mentor
-            </button>
-            <button
-              onClick={() => { switchDemoUser('learner'); navigate('/dashboard'); }}
-              className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-800 font-semibold shadow-xs"
-              title="Log in as Marcus (Learner/Mentor)"
-            >
-              Learner
-            </button>
-            <button
-              onClick={() => { switchDemoUser('admin'); navigate('/admin'); }}
-              className="px-2.5 py-1 rounded-lg bg-white hover:bg-purple-50 text-purple-800 font-semibold shadow-xs"
-              title="Log in as Admin"
-            >
-              Admin
-            </button>
-          </div>
-
           {user ? (
             <div className="flex items-center gap-3">
-              <Button variant="forest" size="sm" onClick={() => navigate('/dashboard')}>
+              <Button variant="forest" size="sm" onClick={handleGoToDashboard}>
                 Go to Dashboard
               </Button>
             </div>
@@ -136,31 +122,6 @@ export const Navbar: React.FC = () => {
             How It Works
           </a>
 
-          {/* Quick Demo in Mobile Menu */}
-          <div className="pt-2 border-t border-stone-100">
-            <p className="text-[10px] uppercase font-bold text-stone-400 mb-2">Switch Demo Account:</p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => { switchDemoUser('mentor'); setMobileMenuOpen(false); navigate('/dashboard'); }}
-                className="py-1.5 px-2 bg-stone-100 hover:bg-forest-50 text-forest-800 text-xs font-semibold rounded-lg text-center"
-              >
-                Mentor
-              </button>
-              <button
-                onClick={() => { switchDemoUser('learner'); setMobileMenuOpen(false); navigate('/dashboard'); }}
-                className="py-1.5 px-2 bg-stone-100 hover:bg-amber-50 text-amber-800 text-xs font-semibold rounded-lg text-center"
-              >
-                Learner
-              </button>
-              <button
-                onClick={() => { switchDemoUser('admin'); setMobileMenuOpen(false); navigate('/admin'); }}
-                className="py-1.5 px-2 bg-purple-50 text-purple-800 text-xs font-semibold rounded-lg text-center"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
-
           <div className="pt-2 border-t border-stone-100 flex flex-col gap-2">
             {user ? (
               <Button
@@ -168,10 +129,10 @@ export const Navbar: React.FC = () => {
                 size="md"
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  navigate('/dashboard');
+                  handleGoToDashboard();
                 }}
               >
-                Open Dashboard
+                Go to My Dashboard
               </Button>
             ) : (
               <>

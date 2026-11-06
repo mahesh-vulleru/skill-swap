@@ -1,13 +1,15 @@
 import { Router } from 'express';
-import { getPlatformAnalytics } from '../controllers/analyticsController';
+import { getPlatformAnalytics, getMentorAnalytics, getLearnerAnalytics } from '../controllers/analyticsController';
 import { authenticate, requireRole } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Strictly enforce authentication and admin authorization for platform analytics
+// Enforce authentication on all analytics routes
 router.use(authenticate);
-router.use(requireRole(['admin']));
 
-router.get('/platform', getPlatformAnalytics);
+// Role-isolated analytics endpoints: each role can ONLY access their own analytics
+router.get('/platform', requireRole(['admin']), getPlatformAnalytics);
+router.get('/mentor', requireRole(['mentor']), getMentorAnalytics);
+router.get('/learner', requireRole(['learner', 'learner_mentor']), getLearnerAnalytics);
 
 export default router;

@@ -12,18 +12,16 @@ import {
   Award,
   Coins,
   User,
-  ShieldAlert,
+  BookOpen,
   LogOut,
   X,
-  ShieldCheck,
-  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { Avatar } from '../common/Avatar';
 
 export const Sidebar: React.FC = () => {
-  const { user, logout, switchDemoUser } = useAuth();
+  const { user, logout } = useAuth();
   const { isOpen, closeSidebar } = useSidebar();
   const navigate = useNavigate();
 
@@ -118,138 +116,138 @@ export const Sidebar: React.FC = () => {
           </div>
         )}
 
-        {/* User Navigation Links (10 Core Modules) */}
+        {/* Role-Isolated User Navigation Links */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-          {/* Main Menu (Discovery & Matching) */}
-          <div>
-            <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
-              Main Menu
-            </p>
-            <div className="space-y-1">
-              <NavLink to="/dashboard" onClick={handleNavClick} className={navItemClass}>
-                <LayoutDashboard className="w-4 h-4" />
-                <span>User Dashboard</span>
-              </NavLink>
-              <NavLink to="/skills" onClick={handleNavClick} className={navItemClass}>
-                <Search className="w-4 h-4" />
-                <span>Explore Skills</span>
-              </NavLink>
-              <NavLink to="/matches" onClick={handleNavClick} className={navItemClass}>
-                <Sparkles className="w-4 h-4 text-action" />
-                <span>Find Matches</span>
-              </NavLink>
-              <NavLink to="/exchange-requests" onClick={handleNavClick} className={navItemClass}>
-                <Repeat className="w-4 h-4" />
-                <span>Exchange Requests</span>
-              </NavLink>
-            </div>
-          </div>
-
-          {/* Collaboration (Scheduling & Messaging) */}
-          <div>
-            <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
-              Collaboration
-            </p>
-            <div className="space-y-1">
-              <NavLink to="/schedule" onClick={handleNavClick} className={navItemClass}>
-                <CalendarPlus className="w-4 h-4" />
-                <span>Schedule Session</span>
-              </NavLink>
-              <NavLink to="/my-sessions" onClick={handleNavClick} className={navItemClass}>
-                <CalendarCheck className="w-4 h-4" />
-                <span>My Sessions</span>
-              </NavLink>
-              <NavLink to="/chat" onClick={handleNavClick} className={navItemClass}>
-                <MessageSquare className="w-4 h-4" />
-                <span>Real-Time Chat</span>
-              </NavLink>
-            </div>
-          </div>
-
-          {/* Reputation & Growth (Economy & Profile) */}
-          <div>
-            <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
-              Reputation & Economy
-            </p>
-            <div className="space-y-1">
-              <NavLink to="/reviews" onClick={handleNavClick} className={navItemClass}>
-                <Award className="w-4 h-4" />
-                <span>Reviews & Badges</span>
-              </NavLink>
-              <NavLink to="/credits" onClick={handleNavClick} className={navItemClass}>
-                <Coins className="w-4 h-4" />
-                <span>Credits & Rewards</span>
-              </NavLink>
-              <NavLink to="/profile" onClick={handleNavClick} className={navItemClass}>
-                <User className="w-4 h-4" />
-                <span>My Profile</span>
-              </NavLink>
-            </div>
-          </div>
-
-          {/* Switch to Admin Console (Only visible if authenticated user has admin role) */}
-          {user?.role === 'admin' && (
-            <div className="pt-2 border-t border-forest-700/50">
-              <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-purple-300/80 mb-2">
-                Privileged Access
-              </p>
-              <button
-                onClick={() => {
-                  closeSidebar();
-                  navigate('/admin');
-                }}
-                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-700/80 hover:bg-purple-600 transition-colors shadow-xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <ShieldAlert className="w-4 h-4 text-purple-300" />
-                  <span>Admin Console</span>
+          {user?.role === 'mentor' ? (
+            /* ================= MENTOR NAVIGATION ONLY ================= */
+            <>
+              <div>
+                <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
+                  Teaching Center
+                </p>
+                <div className="space-y-1">
+                  <NavLink to="/mentor/dashboard" onClick={handleNavClick} className={navItemClass}>
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Mentor Hub</span>
+                  </NavLink>
+                  <NavLink to="/exchange-requests" onClick={handleNavClick} className={navItemClass}>
+                    <Repeat className="w-4 h-4" />
+                    <span>Student Requests</span>
+                  </NavLink>
+                  <NavLink to="/profile" onClick={handleNavClick} className={navItemClass}>
+                    <BookOpen className="w-4 h-4" />
+                    <span>Teaching Curriculum</span>
+                  </NavLink>
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-purple-300" />
-              </button>
-            </div>
+              </div>
+
+              <div>
+                <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
+                  Teaching Sessions
+                </p>
+                <div className="space-y-1">
+                  <NavLink to="/my-sessions" onClick={handleNavClick} className={navItemClass}>
+                    <CalendarCheck className="w-4 h-4" />
+                    <span>Teaching Calendar</span>
+                  </NavLink>
+                  <NavLink to="/chat" onClick={handleNavClick} className={navItemClass}>
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Student Chat</span>
+                  </NavLink>
+                </div>
+              </div>
+
+              <div>
+                <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
+                  Reputation & Earnings
+                </p>
+                <div className="space-y-1">
+                  <NavLink to="/reviews" onClick={handleNavClick} className={navItemClass}>
+                    <Award className="w-4 h-4" />
+                    <span>Student Testimonials</span>
+                  </NavLink>
+                  <NavLink to="/credits" onClick={handleNavClick} className={navItemClass}>
+                    <Coins className="w-4 h-4" />
+                    <span>Teaching Credits</span>
+                  </NavLink>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ================= LEARNER NAVIGATION ONLY ================= */
+            <>
+              <div>
+                <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
+                  Learning Center
+                </p>
+                <div className="space-y-1">
+                  <NavLink to="/learner/dashboard" onClick={handleNavClick} className={navItemClass}>
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Learner Hub</span>
+                  </NavLink>
+                  <NavLink to="/skills" onClick={handleNavClick} className={navItemClass}>
+                    <Search className="w-4 h-4" />
+                    <span>Explore Skills</span>
+                  </NavLink>
+                  <NavLink to="/matches" onClick={handleNavClick} className={navItemClass}>
+                    <Sparkles className="w-4 h-4 text-action" />
+                    <span>Find Mentors</span>
+                  </NavLink>
+                  <NavLink to="/exchange-requests" onClick={handleNavClick} className={navItemClass}>
+                    <Repeat className="w-4 h-4" />
+                    <span>Learning Requests</span>
+                  </NavLink>
+                </div>
+              </div>
+
+              <div>
+                <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
+                  Study Sessions
+                </p>
+                <div className="space-y-1">
+                  <NavLink to="/schedule" onClick={handleNavClick} className={navItemClass}>
+                    <CalendarPlus className="w-4 h-4" />
+                    <span>Book a Mentor</span>
+                  </NavLink>
+                  <NavLink to="/my-sessions" onClick={handleNavClick} className={navItemClass}>
+                    <CalendarCheck className="w-4 h-4" />
+                    <span>My Sessions</span>
+                  </NavLink>
+                  <NavLink to="/chat" onClick={handleNavClick} className={navItemClass}>
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Mentor Chat</span>
+                  </NavLink>
+                </div>
+              </div>
+
+              <div>
+                <p className="px-4 text-[10px] uppercase font-bold tracking-wider text-emerald-400/60 mb-2">
+                  Progress & Economy
+                </p>
+                <div className="space-y-1">
+                  <NavLink to="/reviews" onClick={handleNavClick} className={navItemClass}>
+                    <Award className="w-4 h-4" />
+                    <span>Reviews & Badges</span>
+                  </NavLink>
+                  <NavLink to="/credits" onClick={handleNavClick} className={navItemClass}>
+                    <Coins className="w-4 h-4" />
+                    <span>Learning Credits</span>
+                  </NavLink>
+                  <NavLink to="/profile" onClick={handleNavClick} className={navItemClass}>
+                    <User className="w-4 h-4" />
+                    <span>My Profile</span>
+                  </NavLink>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Footer with Persona Switcher & Logout */}
-        <div className="p-4 border-t border-forest-700/60 bg-forest-900/60 space-y-3">
-          <div className="bg-forest-950/70 p-2.5 rounded-xl border border-forest-700/50">
-            <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-action" /> Switch Demo Account:
-            </p>
-            <div className="grid grid-cols-3 gap-1 text-[11px] font-bold">
-              <button
-                onClick={() => {
-                  switchDemoUser('mentor');
-                  closeSidebar();
-                }}
-                className="py-1 px-1.5 bg-forest-700 hover:bg-forest-600 rounded text-center text-white transition-colors"
-              >
-                Mentor
-              </button>
-              <button
-                onClick={() => {
-                  switchDemoUser('learner');
-                  closeSidebar();
-                }}
-                className="py-1 px-1.5 bg-forest-700 hover:bg-forest-600 rounded text-center text-white transition-colors"
-              >
-                Learner
-              </button>
-              <button
-                onClick={() => {
-                  switchDemoUser('admin');
-                  closeSidebar();
-                }}
-                className="py-1 px-1.5 bg-purple-700 hover:bg-purple-600 rounded text-center text-white transition-colors"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
-
+        {/* Footer with Sign Out (No Switch Demo Buttons) */}
+        <div className="p-4 border-t border-forest-700/60 bg-forest-900/60">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-rose-200 hover:text-white bg-rose-950/40 hover:bg-rose-900/60 border border-rose-900/40 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-200 hover:text-white bg-rose-950/40 hover:bg-rose-900/60 border border-rose-900/40 transition-colors shadow-xs"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>

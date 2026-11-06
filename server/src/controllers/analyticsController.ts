@@ -5,6 +5,8 @@ import { Session } from '../models/Session';
 import { Skill } from '../models/Skill';
 import { SkillCategory } from '../models/SkillCategory';
 import { Review } from '../models/Review';
+import { CreditTransaction } from '../models/CreditTransaction';
+import { AuthRequest } from '../middleware/authMiddleware';
 
 export const getPlatformAnalytics = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -62,6 +64,74 @@ export const getPlatformAnalytics = async (req: Request, res: Response): Promise
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || 'Error fetching analytics.' });
+  }
+};
+
+export const getMentorAnalytics = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Authentication required.' });
+      return;
+    }
+
+    const completedSessions = await Session.find({ mentor: userId, status: 'completed' });
+    const teachingHours = completedSessions.reduce((acc, s) => acc + (s.durationMinutes || 60), 0) / 60;
+    const uniqueLearners = new Set(completedSessions.map((s) => s.learner.toString()));
+
+    const earnedTransactions = await CreditTransaction.find({ user: userId, type: 'earned' });
+    const creditsEarned = earnedTransactions.reduce((acc, t) => acc + t.amount, 0);
+
+    const pendingRequests = await ExchangeRequest.countDocuments({ receiver: userId, status: 'pending' });
+    const upcomingSessionsCount = await Session.countDocuments({ mentor: userId, status: 'upcoming' });
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        studentsMentored: uniqueLearners.size,
+        totalTeachingHours: Math.round(teachingHours * 10) / 10,
+        creditsEarned,
+        mentorRating: req.user?.rating || 4.9,
+        reputationScore: req.user?.reputationScore || 100,
+        completedSessions: completedSessions.length,
+        upcomingSessions: upcomingSessionsCount,
+        pendingRequests,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'Error fetching mentor analytics.' });
+  }
+};
+
+export const getLearnerAnalytics = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Authentication required.' });
+      return;
+    }
+
+    const completedSessions = await Session.find({ learner: userId, status: 'completed' });
+    const learningHours = completedSessions.reduce((acc, s) => acc + (s.durationMinutes || 60), 0) / 60;
+    const uniqueMentors = new Set(completedSessions.map((s) => s.mentor.toString()));
+
+    const pendingRequests = await ExchangeRequest.countDocuments({ sender: userId, status: 'pending' });
+    const upcomingSessionsCount = await Session.countDocuments({ learner: userId, status: 'upcoming' });
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        activeMentors: uniqueMentors.size,
+        totalLearningHours: Math.round(learningHours * 10) / 10,
+        creditsAvailable: req.user?.credits || 0,
+        skillsInProgress: req.user?.skillsWanted?.length || 0,
+        completedSessions: completedSessions.length,
+        upcomingSessions: upcomingSessionsCount,
+        pendingRequests,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'Error fetching learner analytics.' });
   }
 };
 
