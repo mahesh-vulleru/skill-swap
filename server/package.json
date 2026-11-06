@@ -7,7 +7,9 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "seed": "tsx src/utils/seedData.ts"
+    "seed": "tsx src/utils/seedData.ts",
+    "test": "tsx src/test/foundationTest.ts",
+    "test:foundation": "tsx src/test/foundationTest.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

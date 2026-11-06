@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useAuth } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -22,22 +22,48 @@ import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
 import { UserManagementPage } from '../pages/admin/UserManagementPage';
 import { PlatformAnalyticsPage } from '../pages/admin/PlatformAnalyticsPage';
 
-// Protected Route wrapper that auto-defaults to demo learner/mentor if browsing directly
+// Standard Protected Route: requires active authenticated session
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
-    return <LoadingSpinner message="Checking SkillSwap session..." />;
+    return <LoadingSpinner message="Verifying SkillSwap session..." />;
   }
 
-  // If not logged in, we allow browsing or redirect to login. For demonstration smoothness, let them in.
+  if (!user) {
+    // Redirect unauthenticated visitors to login, preserving intended destination
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Admin Route: strictly enforces administrator role authorization
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <LoadingSpinner message="Verifying administrator credentials..." />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (user.role !== 'admin') {
+    // Non-admin users are safely redirected to standard user dashboard
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <>{children}</>;
 };
 
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* Public Pages */}
+      {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -63,10 +89,31 @@ export const AppRoutes: React.FC = () => {
         <Route path="/reviews" element={<ReviewsPage />} />
         <Route path="/credits" element={<CreditsPage />} />
 
-        {/* Administration */}
-        <Route path="/admin" element={<AdminDashboardPage />} />
-        <Route path="/admin/users" element={<UserManagementPage />} />
-        <Route path="/admin/analytics" element={<PlatformAnalyticsPage />} />
+        {/* Protected Administration Routes */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboardPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <UserManagementPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <AdminRoute>
+              <PlatformAnalyticsPage />
+            </AdminRoute>
+          }
+        />
       </Route>
 
       {/* Catch-all */}
@@ -74,4 +121,3 @@ export const AppRoutes: React.FC = () => {
     </Routes>
   );
 };
-

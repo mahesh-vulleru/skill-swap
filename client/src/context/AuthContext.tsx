@@ -7,8 +7,8 @@ interface AuthContextType {
   user: IUser | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password?: string) => Promise<void>;
-  register: (data: { name: string; email: string; password?: string; role?: UserRole }) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (data: { name: string; email: string; password: string; role?: UserRole }) => Promise<void>;
   logout: () => void;
   updateUserProfile: (updatedData: Partial<IUser>) => Promise<void>;
   switchDemoUser: (role: 'mentor' | 'learner' | 'admin') => Promise<void>;
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logout();
         }
       } catch (err) {
-        console.warn('Session expired or server offline:', err);
+        console.warn('Session verification failed, logging out:', err);
         logout();
       } finally {
         setLoading(false);
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchMe();
   }, [token]);
 
-  const login = async (email: string, password: string = 'password123') => {
+  const login = async (email: string, password: string) => {
     setLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
@@ -68,13 +68,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (data: { name: string; email: string; password?: string; role?: UserRole }) => {
+  const register = async (data: { name: string; email: string; password: string; role?: UserRole }) => {
     setLoading(true);
     try {
-      const res = await api.post('/auth/register', {
-        ...data,
-        password: data.password || 'password123',
-      });
+      const res = await api.post('/auth/register', data);
       if (res.data.success) {
         localStorage.setItem('skillswap_token', res.data.token);
         setToken(res.data.token);
@@ -133,4 +130,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeftRight, Lock, Mail, AlertCircle, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
@@ -8,11 +8,14 @@ import { Card } from '../../components/common/Card';
 export const LoginPage: React.FC = () => {
   const { login, switchDemoUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const destination = (location.state as any)?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +23,7 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate(destination, { replace: true });
     } catch (err: any) {
       setError(err.message || 'Invalid credentials');
     } finally {
@@ -34,7 +37,7 @@ export const LoginPage: React.FC = () => {
     try {
       await switchDemoUser(role);
       if (role === 'admin') navigate('/admin');
-      else navigate('/dashboard');
+      else navigate(destination, { replace: true });
     } catch (err: any) {
       setError(err.message || 'Failed to login with demo account');
     } finally {
