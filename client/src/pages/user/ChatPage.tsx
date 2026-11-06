@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Send, Paperclip, MessageSquare, Circle, CheckCheck, ArrowLeft } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Button } from '../../components/common/Button';
@@ -11,6 +12,10 @@ import { getSocket } from '../../services/socket';
 import { IMessage, IConversation, IUser } from '../../types';
 
 export const ChatPage: React.FC = () => {
+  const { userId } = useParams();
+  const [searchParams] = useSearchParams();
+  const targetUserId = userId || searchParams.get('partnerId');
+
   const { user } = useAuth();
   const socket = getSocket(user?._id);
   const { info } = useToast();
@@ -28,9 +33,10 @@ export const ChatPage: React.FC = () => {
     try {
       const res = await api.get('/messages/conversations');
       if (res.data?.success) {
-        setConversations(res.data.conversations || []);
-        if (!selectedPartner && res.data.conversations?.length > 0) {
-          setSelectedPartner(res.data.conversations[0].partner);
+        const list = res.data.conversations || [];
+        setConversations(list);
+        if (!selectedPartner && !targetUserId && list.length > 0) {
+          setSelectedPartner(list[0].partner);
         }
       }
     } catch (err) {
@@ -43,6 +49,27 @@ export const ChatPage: React.FC = () => {
   useEffect(() => {
     fetchConversations();
   }, [user]);
+
+  // Handle route / search param target user selection
+  useEffect(() => {
+    if (!targetUserId) return;
+    if (selectedPartner && selectedPartner._id === targetUserId) return;
+
+    const existing = conversations.find((c) => c.partner?._id === targetUserId);
+    if (existing) {
+      setSelectedPartner(existing.partner);
+      setMobileView('chat');
+    } else {
+      api.get(`/users/${targetUserId}`)
+        .then((res) => {
+          if (res.data?.success && res.data.user) {
+            setSelectedPartner(res.data.user);
+            setMobileView('chat');
+          }
+        })
+        .catch(console.error);
+    }
+  }, [targetUserId, conversations]);
 
   // Fetch messages for selected partner
   useEffect(() => {
@@ -121,6 +148,17 @@ export const ChatPage: React.FC = () => {
     info('Attachment upload is enabled for active chat sessions.', 'File Attachment');
   };
 
+  const displayConversations = [...conversations];
+  if (selectedPartner && !conversations.some((c) => c.partner?._id === selectedPartner._id)) {
+    displayConversations.unshift({
+      partner: selectedPartner,
+      lastMessage: 'Direct conversation',
+      timestamp: new Date().toISOString(),
+      unreadCount: 0,
+      online: true,
+    });
+  }
+
   return (
     <div className="min-h-screen bg-cream-100 flex flex-col">
       <Header
@@ -142,19 +180,19 @@ export const ChatPage: React.FC = () => {
             <div className="p-4 border-b border-stone-200 bg-white flex items-center justify-between">
               <h3 className="text-sm font-bold text-stone-900">Conversations</h3>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-forest-100 text-forest-800">
-                {conversations.length} Active
+                {displayConversations.length} Active
               </span>
             </div>
 
             <div className="flex-1 overflow-y-auto divide-y divide-stone-100">
               {loading ? (
                 <div className="p-6 text-center text-xs text-stone-400">Loading conversations...</div>
-              ) : conversations.length === 0 ? (
+              ) : displayConversations.length === 0 ? (
                 <div className="p-8 text-center text-xs text-stone-400">
                   No chat conversations yet. Propose an exchange to start messaging!
                 </div>
               ) : (
-                conversations.map((conv) => (
+                displayConversations.map((conv) => (
                   <div
                     key={conv.partner._id}
                     onClick={() => handleSelectPartner(conv.partner)}

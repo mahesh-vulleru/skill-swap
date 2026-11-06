@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { getPlatformAnalytics } from '../controllers/analyticsController';
-import { authenticate } from '../middleware/authMiddleware';
+import { authenticate, requireRole } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Protect platform analytics with authentication
+// Strictly enforce authentication and admin authorization for platform analytics
 router.use(authenticate);
+router.use(requireRole(['admin']));
+
 router.get('/platform', getPlatformAnalytics);
 
 export default router;

@@ -215,7 +215,7 @@ export const ExchangeRequestsPage: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate('/chat')}
+                        onClick={() => navigate(`/chat/${otherUser._id}`)}
                         title="Chat with partner"
                       >
                         <MessageSquare className="w-4 h-4 text-stone-500" />

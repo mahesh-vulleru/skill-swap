@@ -29,6 +29,27 @@ export const createExchange = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
+    if (senderId && senderId.toString() === receiverId.toString()) {
+      res.status(400).json({ success: false, message: 'Cannot propose a skill exchange to yourself.' });
+      return;
+    }
+
+    // Prevent duplicate pending requests for the same skill pairing
+    const existingPending = await ExchangeRequest.findOne({
+      sender: senderId,
+      receiver: receiverId,
+      skillWanted,
+      status: 'pending',
+    });
+
+    if (existingPending) {
+      res.status(400).json({
+        success: false,
+        message: 'An active pending exchange request for this skill is already awaiting response from this partner.',
+      });
+      return;
+    }
+
     const exchange = await ExchangeRequest.create({
       sender: senderId,
       receiver: receiverId,
@@ -61,6 +82,8 @@ export const updateExchangeStatus = async (req: AuthRequest, res: Response): Pro
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const currentUserId = req.user?._id?.toString();
+    const isAdmin = req.user?.role === 'admin';
 
     if (!['accepted', 'rejected', 'completed', 'cancelled'].includes(status)) {
       res.status(400).json({ success: false, message: 'Invalid status.' });
@@ -73,14 +96,50 @@ export const updateExchangeStatus = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
+    const senderId = exchange.sender.toString();
+    const receiverId = exchange.receiver.toString();
+
+    // Business Rules:
+    // Only the intended recipient can accept or reject an incoming request
+    if (['accepted', 'rejected'].includes(status)) {
+      if (currentUserId !== receiverId && !isAdmin) {
+        res.status(403).json({
+          success: false,
+          message: 'Only the intended recipient can accept or reject this exchange request.',
+        });
+        return;
+      }
+    }
+
+    // Only participants (or admin) can cancel or complete
+    if (['cancelled', 'completed'].includes(status)) {
+      if (currentUserId !== senderId && currentUserId !== receiverId && !isAdmin) {
+        res.status(403).json({
+          success: false,
+          message: 'You are not authorized to modify this exchange request.',
+        });
+        return;
+      }
+    }
+
+    // Prevent modifying already completed or cancelled requests
+    if (exchange.status === 'completed' || exchange.status === 'cancelled') {
+      res.status(400).json({
+        success: false,
+        message: `Cannot change status of an exchange that is already ${exchange.status}.`,
+      });
+      return;
+    }
+
     exchange.status = status;
     await exchange.save();
 
-    // Create notification for sender
+    // Create notification for the other participant
+    const notifyTarget = currentUserId === senderId ? receiverId : senderId;
     await Notification.create({
-      user: exchange.sender,
+      user: notifyTarget,
       title: `Exchange Request ${status.toUpperCase()}`,
-      message: `Your exchange request for '${exchange.skillWanted}' was ${status}.`,
+      message: `The exchange request for '${exchange.skillWanted}' was marked as ${status}.`,
       type: 'exchange_request',
       link: '/exchange-requests',
     });
@@ -90,4 +149,3 @@ export const updateExchangeStatus = async (req: AuthRequest, res: Response): Pro
     res.status(500).json({ success: false, message: error.message || 'Error updating exchange request.' });
   }
 };
-

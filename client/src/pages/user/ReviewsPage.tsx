@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Star, Plus, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/common/Card';
@@ -15,19 +16,25 @@ import { api } from '../../services/api';
 import { IReview, IUser } from '../../types';
 
 export const ReviewsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const paramSessionId = searchParams.get('sessionId');
+  const paramPartnerId = searchParams.get('partnerId');
+  const paramPartnerName = searchParams.get('partnerName');
+  const paramSkill = searchParams.get('skill');
+
   const { user } = useAuth();
   const { success: toastSuccess, error: toastError } = useToast();
 
   const [reviews, setReviews] = useState<IReview[]>([]);
   const [partners, setPartners] = useState<IUser[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(Boolean(paramSessionId || paramPartnerId));
 
   // Review Form state
-  const [selectedRevieweeId, setSelectedRevieweeId] = useState('');
+  const [selectedRevieweeId, setSelectedRevieweeId] = useState(paramPartnerId || '');
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('');
-  const [skillSwapped, setSkillSwapped] = useState('React & TypeScript');
+  const [skillSwapped, setSkillSwapped] = useState(paramSkill || 'React & TypeScript');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchReviews = async () => {
@@ -47,12 +54,24 @@ export const ReviewsPage: React.FC = () => {
 
     api.get('/users').then((res) => {
       if (res.data?.success) {
-        const others = (res.data.users || []).filter((u: IUser) => u._id !== user?._id);
+        let others = (res.data.users || []).filter((u: IUser) => u._id !== user?._id);
+        if (paramPartnerId && !others.some((u: IUser) => u._id === paramPartnerId)) {
+          others = [
+            {
+              _id: paramPartnerId,
+              name: paramPartnerName || 'Session Partner',
+              role: 'user',
+            } as unknown as IUser,
+            ...others,
+          ];
+        }
         setPartners(others);
-        if (others.length > 0) setSelectedRevieweeId(others[0]._id);
+        if (!selectedRevieweeId && others.length > 0) {
+          setSelectedRevieweeId(others[0]._id);
+        }
       }
     });
-  }, [user]);
+  }, [user, paramPartnerId]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,13 +84,14 @@ export const ReviewsPage: React.FC = () => {
         rating,
         feedback,
         skillSwapped,
+        sessionId: paramSessionId || undefined,
       });
 
       if (res.data?.success) {
         setIsModalOpen(false);
         setFeedback('');
         fetchReviews();
-        toastSuccess('Review submitted and credits/reputation updated!');
+        toastSuccess('Review submitted! Reputation updated and +2 reviewer credits awarded.');
       }
     } catch (err: any) {
       toastError(err.message || 'Error submitting review');

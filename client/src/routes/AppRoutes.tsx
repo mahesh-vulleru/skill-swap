@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
+import { AdminLayout } from '../components/layout/AdminLayout';
 import { useAuth } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
@@ -18,9 +19,14 @@ import { MySessionsPage } from '../pages/user/MySessionsPage';
 import { ChatPage } from '../pages/user/ChatPage';
 import { ReviewsPage } from '../pages/user/ReviewsPage';
 import { CreditsPage } from '../pages/user/CreditsPage';
+
+// Admin Pages
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
 import { UserManagementPage } from '../pages/admin/UserManagementPage';
 import { PlatformAnalyticsPage } from '../pages/admin/PlatformAnalyticsPage';
+import { AdminModerationPage } from '../pages/admin/AdminModerationPage';
+import { AdminSettingsPage } from '../pages/admin/AdminSettingsPage';
+import { AdminAuditLogsPage } from '../pages/admin/AdminAuditLogsPage';
 
 // Standard Protected Route: requires active authenticated session
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -53,7 +59,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   if (user.role !== 'admin') {
-    // Non-admin users are safely redirected to standard user dashboard
+    // Non-admin users are strictly forbidden from admin pages and redirected to standard user dashboard
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -68,7 +74,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Authenticated Application Shell */}
+      {/* User Portal: 10 Standard Modules with AppLayout */}
       <Route
         element={
           <ProtectedRoute>
@@ -88,32 +94,22 @@ export const AppRoutes: React.FC = () => {
         <Route path="/chat/:userId" element={<ChatPage />} />
         <Route path="/reviews" element={<ReviewsPage />} />
         <Route path="/credits" element={<CreditsPage />} />
+      </Route>
 
-        {/* Protected Administration Routes */}
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminDashboardPage />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <AdminRoute>
-              <UserManagementPage />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/analytics"
-          element={
-            <AdminRoute>
-              <PlatformAnalyticsPage />
-            </AdminRoute>
-          }
-        />
+      {/* Dedicated Admin Portal: Strictly Protected with AdminLayout */}
+      <Route
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
+        <Route path="/admin" element={<AdminDashboardPage />} />
+        <Route path="/admin/users" element={<UserManagementPage />} />
+        <Route path="/admin/analytics" element={<PlatformAnalyticsPage />} />
+        <Route path="/admin/moderation" element={<AdminModerationPage />} />
+        <Route path="/admin/settings" element={<AdminSettingsPage />} />
+        <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
       </Route>
 
       {/* Catch-all */}
