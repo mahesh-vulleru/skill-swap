@@ -4,8 +4,12 @@ import { Calendar, Clock, Video, Users, BookOpen, FileText, CheckCircle2, ArrowR
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
-import { Badge } from '../../components/common/Badge';
+import { Input } from '../../components/common/Input';
+import { Select } from '../../components/common/Select';
+import { Textarea } from '../../components/common/Textarea';
+import { Breadcrumbs } from '../../components/common/Breadcrumbs';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
 import { IUser } from '../../types';
 
@@ -13,6 +17,7 @@ export const ScheduleSessionPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const [partners, setPartners] = useState<IUser[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState(searchParams.get('partnerId') || '');
@@ -29,7 +34,7 @@ export const ScheduleSessionPage: React.FC = () => {
   useEffect(() => {
     api.get('/users')
       .then((res) => {
-        if (res.data.success) {
+        if (res.data?.success) {
           const others = (res.data.users || []).filter((u: IUser) => u._id !== user?._id);
           setPartners(others);
           if (!selectedPartnerId && others.length > 0) {
@@ -60,14 +65,15 @@ export const ScheduleSessionPage: React.FC = () => {
         notes,
       });
 
-      if (res.data.success) {
+      if (res.data?.success) {
         setSuccess(true);
+        toastSuccess('Session scheduled successfully!');
         setTimeout(() => {
           navigate('/my-sessions');
         }, 1200);
       }
     } catch (err: any) {
-      alert(err.message || 'Error scheduling session');
+      toastError(err.message || 'Error scheduling session');
     } finally {
       setSubmitting(false);
     }
@@ -80,8 +86,10 @@ export const ScheduleSessionPage: React.FC = () => {
         subtitle="Coordinate date, time, and Google Meet integration with your peer exchange partner"
       />
 
-      <div className="p-8 max-w-4xl mx-auto w-full space-y-8">
-        <Card className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-6 sm:space-y-8">
+        <Breadcrumbs items={[{ label: 'Schedule Session' }]} />
+
+        <Card className="p-5 sm:p-8">
           {success ? (
             <div className="py-12 text-center space-y-3">
               <div className="w-16 h-16 rounded-full bg-forest-50 border border-forest-200 text-forest-700 flex items-center justify-center mx-auto">
@@ -94,10 +102,8 @@ export const ScheduleSessionPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Partner Select */}
               <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-forest-600" /> Exchange Partner
-                </label>
-                <select
+                <Select
+                  label="Exchange Partner"
                   required
                   value={selectedPartnerId}
                   onChange={(e) => {
@@ -105,97 +111,74 @@ export const ScheduleSessionPage: React.FC = () => {
                     const selected = partners.find((p) => p._id === e.target.value);
                     if (selected?.skillsOffered?.[0]) setSkill(selected.skillsOffered[0].name);
                   }}
-                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-semibold text-stone-800 focus:outline-none focus:ring-2 focus:ring-forest-500/20"
-                >
-                  {partners.map((p) => (
-                    <option key={p._id} value={p._id}>
-                      {p.name} ({p.location}) — Role: {p.role}
-                    </option>
-                  ))}
-                </select>
+                  options={partners.map((p) => ({
+                    value: p._id,
+                    label: `${p.name} (${p.location || 'Remote'}) — Role: ${p.role}`,
+                  }))}
+                />
               </div>
 
               {/* Skill & Topic */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4 text-forest-600" /> Skill Topic
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. React & TypeScript, Figma"
-                    value={skill}
-                    onChange={(e) => setSkill(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-forest-500/20"
-                  />
-                </div>
+                <Input
+                  label="Skill Topic"
+                  type="text"
+                  required
+                  placeholder="e.g. React & TypeScript, Figma"
+                  value={skill}
+                  onChange={(e) => setSkill(e.target.value)}
+                  leftIcon={<BookOpen className="w-4 h-4" />}
+                />
 
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-forest-600" /> Specific Agenda / Session Goal
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Code review on custom hooks"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-forest-500/20"
-                  />
-                </div>
+                <Input
+                  label="Specific Agenda / Session Goal"
+                  type="text"
+                  required
+                  placeholder="e.g. Code review on custom hooks"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  leftIcon={<FileText className="w-4 h-4" />}
+                />
               </div>
 
               {/* Date, Time, Duration */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-forest-600" /> Date
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-semibold"
-                  />
-                </div>
+                <Input
+                  label="Date"
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  leftIcon={<Calendar className="w-4 h-4" />}
+                />
 
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-forest-600" /> Time
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-semibold"
-                  />
-                </div>
+                <Input
+                  label="Time"
+                  type="time"
+                  required
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  leftIcon={<Clock className="w-4 h-4" />}
+                />
 
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wide mb-1.5">
-                    Duration
-                  </label>
-                  <select
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-semibold"
-                  >
-                    <option value={30}>30 Minutes</option>
-                    <option value={60}>60 Minutes (Standard)</option>
-                    <option value={90}>90 Minutes (Deep Dive)</option>
-                  </select>
-                </div>
+                <Select
+                  label="Duration"
+                  value={durationMinutes}
+                  onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                  options={[
+                    { value: 30, label: '30 Minutes' },
+                    { value: 60, label: '60 Minutes (Standard)' },
+                    { value: 90, label: '90 Minutes (Deep Dive)' },
+                  ]}
+                />
               </div>
 
               {/* Mode Selection */}
               <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5 flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-forest-600" /> Meeting Mode
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 xs:grid-cols-3 gap-3">
                   {(['Google Meet', 'Zoom', 'SkillSwap Live Video'] as const).map((m) => (
                     <button
                       key={m}
@@ -214,27 +197,23 @@ export const ScheduleSessionPage: React.FC = () => {
               </div>
 
               {/* Notes */}
-              <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wide mb-1.5">
-                  Pre-session Notes & Resource Links (Optional)
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Share GitHub repos, Figma prototypes, or questions to review beforehand..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-forest-500/20"
-                />
-              </div>
+              <Textarea
+                label="Pre-session Notes & Resource Links (Optional)"
+                rows={3}
+                placeholder="Share GitHub repos, Figma prototypes, or questions to review beforehand..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
 
-              <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
-                <span className="text-xs text-stone-500">
+              <div className="pt-4 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <span className="text-xs text-stone-500 text-center sm:text-left">
                   ⚡ Completing a 60m mentorship session awards <strong className="text-action">10 Credits</strong>.
                 </span>
                 <Button
                   type="submit"
                   variant="primary"
                   size="lg"
+                  className="w-full sm:w-auto"
                   isLoading={submitting}
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                 >
@@ -248,4 +227,3 @@ export const ScheduleSessionPage: React.FC = () => {
     </div>
   );
 };
-

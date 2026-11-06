@@ -6,8 +6,18 @@ export const connectDB = async (): Promise<void> => {
     const conn = await mongoose.connect(config.mongoUri);
     console.log(`[MongoDB] Connected successfully to host: ${conn.connection.host}, database: ${conn.connection.name}`);
   } catch (error) {
-    console.error('[MongoDB] Connection error:', error);
-    // Don't crash immediately in dev mode so API health endpoint can report the true disconnected status
+    console.error('[MongoDB] Connection error with primary URI:', error);
+    // If primary URI fails (e.g. DNS SRV failure or offline), attempt local instance fallback
+    const localUri = 'mongodb://127.0.0.1:27017/skillswap';
+    if (config.mongoUri !== localUri) {
+      try {
+        console.log('[MongoDB] Attempting fallback to local instance (127.0.0.1:27017)...');
+        const localConn = await mongoose.connect(localUri);
+        console.log(`[MongoDB] Connected successfully to local fallback: ${localConn.connection.host}, database: ${localConn.connection.name}`);
+      } catch (fallbackError) {
+        console.error('[MongoDB] Local fallback also failed:', fallbackError);
+      }
+    }
   }
 };
 
@@ -23,4 +33,3 @@ export const getDatabaseStatus = (): 'connected' | 'connecting' | 'disconnecting
       return 'disconnected';
   }
 };
-
