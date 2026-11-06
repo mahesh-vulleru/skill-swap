@@ -1,34 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import {
-  User as UserIcon,
   MapPin,
   Clock,
   Star,
   Award,
-  BookOpen,
   Plus,
   Trash2,
   Edit3,
-  CheckCircle,
   Coins,
-  ShieldCheck,
-  Calendar,
 } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
+import { Avatar } from '../../components/common/Avatar';
+import { Breadcrumbs } from '../../components/common/Breadcrumbs';
+import { Input } from '../../components/common/Input';
+import { Select } from '../../components/common/Select';
+import { Textarea } from '../../components/common/Textarea';
+import { ConfirmationDialog } from '../../components/common/ConfirmationDialog';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
 import { IReview } from '../../types';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUserProfile } = useAuth();
+  const { success, error: toastError } = useToast();
   const [reviews, setReviews] = useState<IReview[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddSkillModalOpen, setIsAddSkillModalOpen] = useState(false);
   const [skillType, setSkillType] = useState<'offer' | 'want'>('offer');
+
+  // Delete skill confirmation state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [skillToDelete, setSkillToDelete] = useState<{ index: number; type: 'offer' | 'want'; name: string } | null>(null);
 
   // Edit form state
   const [name, setName] = useState(user?.name || '');
@@ -50,7 +57,7 @@ export const ProfilePage: React.FC = () => {
 
       api.get(`/reviews/user/${user._id}`)
         .then((res) => {
-          if (res.data.success) setReviews(res.data.reviews || []);
+          if (res.data?.success) setReviews(res.data.reviews || []);
         })
         .catch(console.error);
     }
@@ -58,8 +65,13 @@ export const ProfilePage: React.FC = () => {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateUserProfile({ name, bio, location, availability });
-    setIsEditModalOpen(false);
+    try {
+      await updateUserProfile({ name, bio, location, availability });
+      success('Profile details updated successfully!');
+      setIsEditModalOpen(false);
+    } catch {
+      toastError('Failed to update profile.');
+    }
   };
 
   const handleAddSkill = async (e: React.FormEvent) => {
@@ -72,25 +84,39 @@ export const ProfilePage: React.FC = () => {
       level: newSkillLevel,
     };
 
-    if (skillType === 'offer') {
-      const updated = [...(user?.skillsOffered || []), newSkill];
-      await updateUserProfile({ skillsOffered: updated });
-    } else {
-      const updated = [...(user?.skillsWanted || []), newSkill];
-      await updateUserProfile({ skillsWanted: updated });
-    }
+    try {
+      if (skillType === 'offer') {
+        const updated = [...(user?.skillsOffered || []), newSkill];
+        await updateUserProfile({ skillsOffered: updated });
+        success(`Added "${newSkill.name}" to your offered skills!`);
+      } else {
+        const updated = [...(user?.skillsWanted || []), newSkill];
+        await updateUserProfile({ skillsWanted: updated });
+        success(`Added "${newSkill.name}" to your learning goals!`);
+      }
 
-    setNewSkillName('');
-    setIsAddSkillModalOpen(false);
+      setNewSkillName('');
+      setIsAddSkillModalOpen(false);
+    } catch {
+      toastError('Failed to add skill.');
+    }
   };
 
-  const handleRemoveSkill = async (index: number, type: 'offer' | 'want') => {
-    if (type === 'offer') {
-      const updated = (user?.skillsOffered || []).filter((_, i) => i !== index);
-      await updateUserProfile({ skillsOffered: updated });
-    } else {
-      const updated = (user?.skillsWanted || []).filter((_, i) => i !== index);
-      await updateUserProfile({ skillsWanted: updated });
+  const confirmDeleteSkill = async () => {
+    if (!skillToDelete) return;
+    try {
+      if (skillToDelete.type === 'offer') {
+        const updated = (user?.skillsOffered || []).filter((_, i) => i !== skillToDelete.index);
+        await updateUserProfile({ skillsOffered: updated });
+      } else {
+        const updated = (user?.skillsWanted || []).filter((_, i) => i !== skillToDelete.index);
+        await updateUserProfile({ skillsWanted: updated });
+      }
+      success(`Removed skill "${skillToDelete.name}".`);
+      setDeleteConfirmOpen(false);
+      setSkillToDelete(null);
+    } catch {
+      toastError('Failed to remove skill.');
     }
   };
 
@@ -98,11 +124,13 @@ export const ProfilePage: React.FC = () => {
     <div className="min-h-screen bg-cream-100 flex flex-col">
       <Header title="My Profile" subtitle="Manage your public information, skills portfolio, and peer reviews" />
 
-      <div className="p-8 max-w-7xl mx-auto w-full space-y-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 sm:space-y-8">
+        <Breadcrumbs items={[{ label: 'Profile' }]} />
+
         {/* Profile Header & Cover Card */}
-        <div className="relative rounded-3xl bg-white border border-stone-200/80 shadow-elevated overflow-hidden">
+        <div className="relative rounded-2xl sm:rounded-3xl bg-white border border-stone-200/80 shadow-elevated overflow-hidden">
           {/* Cover Photo */}
-          <div className="h-48 md:h-64 w-full relative overflow-hidden bg-gradient-to-r from-forest-800 to-forest-600">
+          <div className="h-36 sm:h-48 md:h-60 w-full relative overflow-hidden bg-gradient-to-r from-forest-800 to-forest-600">
             <img
               src={user?.coverImage || 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=80'}
               alt="Cover"
@@ -112,7 +140,7 @@ export const ProfilePage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-white/90 backdrop-blur-md"
+                className="bg-white/90 backdrop-blur-md shadow-sm"
                 onClick={() => setIsEditModalOpen(true)}
                 leftIcon={<Edit3 className="w-3.5 h-3.5" />}
               >
@@ -122,65 +150,72 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           {/* Profile Meta Row */}
-          <div className="px-8 pb-8 pt-0 relative">
-            <div className="flex flex-col md:flex-row md:items-end justify-between -mt-16 md:-mt-20 gap-4 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-                <img
+          <div className="px-5 sm:px-8 pb-6 sm:pb-8 pt-0 relative">
+            <div className="flex flex-col md:flex-row md:items-end justify-between -mt-12 sm:-mt-16 md:-mt-20 gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-5">
+                <Avatar
                   src={user?.avatar}
-                  alt={user?.name}
-                  className="w-32 h-32 rounded-3xl object-cover border-4 border-white shadow-xl bg-white"
+                  name={user?.name || 'User'}
+                  size="2xl"
+                  className="ring-4 ring-white shadow-xl bg-white rounded-full"
                 />
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-2xl font-bold text-stone-900 font-['Plus_Jakarta_Sans']">{user?.name}</h2>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-stone-900 font-['Plus_Jakarta_Sans'] truncate">
+                      {user?.name}
+                    </h2>
                     <Badge variant="forest">
                       {user?.role === 'learner_mentor' ? 'Learner & Mentor' : user?.role}
                     </Badge>
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-stone-500 font-medium">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-2 text-xs text-stone-500 font-medium">
                     <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-stone-400" /> {user?.location}
+                      <MapPin className="w-3.5 h-3.5 text-stone-400" /> {user?.location || 'Remote'}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-stone-400" /> {user?.availability}
+                      <Clock className="w-3.5 h-3.5 text-stone-400" /> {user?.availability || 'Flexible'}
                     </span>
                     <span className="flex items-center gap-1 font-bold text-amber-600">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {user?.rating || 4.9} ({reviews.length} reviews)
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {user?.rating ?? 4.9} ({reviews.length} reviews)
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="px-4 py-2 rounded-xl bg-orange-50 border border-orange-200/60 text-action flex items-center gap-2">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="px-3 sm:px-4 py-2 rounded-xl bg-orange-50 border border-orange-200/60 text-action flex items-center gap-2">
                   <Coins className="w-4 h-4" />
-                  <span className="text-sm font-bold">{user?.credits || 0} Credits</span>
+                  <span className="text-xs sm:text-sm font-bold">{user?.credits ?? 0} Credits</span>
                 </div>
-                <div className="px-4 py-2 rounded-xl bg-forest-50 border border-forest-200/60 text-forest-700 flex items-center gap-2">
+                <div className="px-3 sm:px-4 py-2 rounded-xl bg-forest-50 border border-forest-200/60 text-forest-700 flex items-center gap-2">
                   <Award className="w-4 h-4" />
-                  <span className="text-sm font-bold">{user?.reputationScore || 100} Rep</span>
+                  <span className="text-xs sm:text-sm font-bold">{user?.reputationScore ?? 100} Rep</span>
                 </div>
               </div>
             </div>
 
-            <p className="text-sm text-stone-600 leading-relaxed max-w-3xl">
-              {user?.bio}
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed max-w-3xl">
+              {user?.bio || 'No bio provided yet.'}
             </p>
 
             {/* Achievement Badges Row */}
             <div className="mt-6 pt-6 border-t border-stone-100 flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-stone-500 uppercase tracking-wide mr-2">Badges:</span>
-              {user?.badges?.map((badge, idx) => (
-                <Badge key={idx} variant="purple" size="md" icon={<Award className="w-3.5 h-3.5" />}>
-                  {badge}
-                </Badge>
-              ))}
+              {user?.badges && user.badges.length > 0 ? (
+                user.badges.map((badge, idx) => (
+                  <Badge key={idx} variant="purple" size="md" icon={<Award className="w-3.5 h-3.5" />}>
+                    {badge}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-xs text-stone-400 italic">Complete sessions to earn badges</span>
+              )}
             </div>
           </div>
         </div>
 
         {/* 2 Columns: Skills I Offer & Skills I Want */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           {/* Skills I Offer */}
           <Card>
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-4">
@@ -199,24 +234,31 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {user?.skillsOffered?.map((skill, index) => (
-                <div key={index} className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 flex items-center justify-between">
-                  <div>
-                    <h5 className="text-sm font-bold text-stone-900">{skill.name}</h5>
-                    <p className="text-xs text-stone-500 mt-0.5">{skill.category} • {skill.description || 'Experienced'}</p>
+              {user?.skillsOffered && user.skillsOffered.length > 0 ? (
+                user.skillsOffered.map((skill, index) => (
+                  <div key={index} className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 flex items-center justify-between">
+                    <div>
+                      <h5 className="text-sm font-bold text-stone-900">{skill.name}</h5>
+                      <p className="text-xs text-stone-500 mt-0.5">{skill.category} • {skill.description || 'Experienced'}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="forest" size="sm">{skill.level}</Badge>
+                      <button
+                        onClick={() => {
+                          setSkillToDelete({ index, type: 'offer', name: skill.name });
+                          setDeleteConfirmOpen(true);
+                        }}
+                        className="p-1 rounded text-stone-400 hover:text-rose-500 transition-colors"
+                        title="Remove skill"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="forest" size="sm">{skill.level}</Badge>
-                    <button
-                      onClick={() => handleRemoveSkill(index, 'offer')}
-                      className="p-1 rounded text-stone-400 hover:text-rose-500 transition-colors"
-                      title="Remove skill"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-xs text-stone-400 py-3 text-center">No offered skills yet. Add what you can teach!</p>
+              )}
             </div>
           </Card>
 
@@ -238,24 +280,31 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {user?.skillsWanted?.map((skill, index) => (
-                <div key={index} className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 flex items-center justify-between">
-                  <div>
-                    <h5 className="text-sm font-bold text-stone-900">{skill.name}</h5>
-                    <p className="text-xs text-stone-500 mt-0.5">{skill.category} • {skill.description || 'Eager to learn'}</p>
+              {user?.skillsWanted && user.skillsWanted.length > 0 ? (
+                user.skillsWanted.map((skill, index) => (
+                  <div key={index} className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 flex items-center justify-between">
+                    <div>
+                      <h5 className="text-sm font-bold text-stone-900">{skill.name}</h5>
+                      <p className="text-xs text-stone-500 mt-0.5">{skill.category} • {skill.description || 'Eager to learn'}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="orange" size="sm">{skill.level}</Badge>
+                      <button
+                        onClick={() => {
+                          setSkillToDelete({ index, type: 'want', name: skill.name });
+                          setDeleteConfirmOpen(true);
+                        }}
+                        className="p-1 rounded text-stone-400 hover:text-rose-500 transition-colors"
+                        title="Remove skill"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="orange" size="sm">{skill.level}</Badge>
-                    <button
-                      onClick={() => handleRemoveSkill(index, 'want')}
-                      className="p-1 rounded text-stone-400 hover:text-rose-500 transition-colors"
-                      title="Remove skill"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-xs text-stone-400 py-3 text-center">No learning goals yet. Add what you want to learn!</p>
+              )}
             </div>
           </Card>
         </div>
@@ -263,7 +312,7 @@ export const ProfilePage: React.FC = () => {
         {/* Reviews Received Section */}
         <Card>
           <div className="pb-4 border-b border-stone-100 mb-6">
-            <h3 className="text-lg font-bold text-stone-900">Verified Peer Reviews & Testimonials</h3>
+            <h3 className="text-base sm:text-lg font-bold text-stone-900">Verified Peer Reviews & Testimonials</h3>
             <p className="text-xs text-stone-500">Feedback from peers after completed exchange sessions</p>
           </div>
 
@@ -278,14 +327,14 @@ export const ProfilePage: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2.5">
-                        <img
-                          src={rev.reviewer?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80'}
-                          alt={rev.reviewer?.name}
-                          className="w-8 h-8 rounded-full object-cover"
+                        <Avatar
+                          src={rev.reviewer?.avatar}
+                          name={rev.reviewer?.name || 'Reviewer'}
+                          size="sm"
                         />
-                        <div>
-                          <h6 className="text-xs font-bold text-stone-900">{rev.reviewer?.name}</h6>
-                          <span className="text-[10px] text-stone-400">{rev.reviewer?.location}</span>
+                        <div className="min-w-0">
+                          <h6 className="text-xs font-bold text-stone-900 truncate">{rev.reviewer?.name}</h6>
+                          <span className="text-[10px] text-stone-400 truncate">{rev.reviewer?.location || 'Remote'}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-0.5">
@@ -314,42 +363,33 @@ export const ProfilePage: React.FC = () => {
       {/* Edit Profile Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Profile Details">
         <form onSubmit={handleUpdateProfile} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Full Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Location</label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Availability Schedule</label>
-            <input
-              type="text"
-              value={availability}
-              onChange={(e) => setAvailability(e.target.value)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Bio / Expertise Statement</label>
-            <textarea
-              rows={3}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm"
-            />
-          </div>
+          <Input
+            label="Full Name"
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Input
+            label="Location"
+            type="text"
+            placeholder="e.g. San Francisco, CA"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
+          <Input
+            label="Availability Schedule"
+            type="text"
+            placeholder="e.g. Weekday evenings, Weekends"
+            value={availability}
+            onChange={(e) => setAvailability(e.target.value)}
+          />
+          <Textarea
+            label="Bio / Expertise Statement"
+            rows={3}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+          />
           <div className="pt-2 flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setIsEditModalOpen(false)}>
               Cancel
@@ -368,45 +408,38 @@ export const ProfilePage: React.FC = () => {
         title={skillType === 'offer' ? 'Add Skill You Can Teach' : 'Add Skill You Want to Learn'}
       >
         <form onSubmit={handleAddSkill} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Skill Name</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Next.js, Figma, Spanish, Python"
-              value={newSkillName}
-              onChange={(e) => setNewSkillName(e.target.value)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Category</label>
-            <select
-              value={newSkillCategory}
-              onChange={(e) => setNewSkillCategory(e.target.value)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm"
-            >
-              <option value="Programming">Programming</option>
-              <option value="Design">Design</option>
-              <option value="Business">Business</option>
-              <option value="Language">Language</option>
-              <option value="Video Editing">Video Editing</option>
-              <option value="Data Science">Data Science</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Experience Level</label>
-            <select
-              value={newSkillLevel}
-              onChange={(e) => setNewSkillLevel(e.target.value as any)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm"
-            >
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-              <option value="Expert">Expert</option>
-            </select>
-          </div>
+          <Input
+            label="Skill Name"
+            type="text"
+            required
+            placeholder="e.g. Next.js, Figma, Spanish, Python"
+            value={newSkillName}
+            onChange={(e) => setNewSkillName(e.target.value)}
+          />
+          <Select
+            label="Category"
+            value={newSkillCategory}
+            onChange={(e) => setNewSkillCategory(e.target.value)}
+            options={[
+              { value: 'Programming', label: 'Programming' },
+              { value: 'Design', label: 'Design' },
+              { value: 'Business', label: 'Business' },
+              { value: 'Language', label: 'Language' },
+              { value: 'Video Editing', label: 'Video Editing' },
+              { value: 'Data Science', label: 'Data Science' },
+            ]}
+          />
+          <Select
+            label="Experience Level"
+            value={newSkillLevel}
+            onChange={(e) => setNewSkillLevel(e.target.value as any)}
+            options={[
+              { value: 'Beginner', label: 'Beginner' },
+              { value: 'Intermediate', label: 'Intermediate' },
+              { value: 'Advanced', label: 'Advanced' },
+              { value: 'Expert', label: 'Expert' },
+            ]}
+          />
           <div className="pt-2 flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setIsAddSkillModalOpen(false)}>
               Cancel
@@ -417,7 +450,20 @@ export const ProfilePage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Skill Confirmation */}
+      <ConfirmationDialog
+        isOpen={deleteConfirmOpen}
+        title="Remove Skill"
+        message={`Are you sure you want to remove "${skillToDelete?.name}" from your profile?`}
+        confirmText="Remove"
+        variant="danger"
+        onConfirm={confirmDeleteSkill}
+        onCancel={() => {
+          setDeleteConfirmOpen(false);
+          setSkillToDelete(null);
+        }}
+      />
     </div>
   );
 };
-

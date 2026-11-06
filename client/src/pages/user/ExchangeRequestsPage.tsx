@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Repeat, Check, X, CalendarPlus, Clock, ArrowRight, MessageSquare, Plus } from 'lucide-react';
+import { Repeat, Check, X, CalendarPlus, MessageSquare } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
+import { Avatar } from '../../components/common/Avatar';
+import { SkeletonRow } from '../../components/common/Skeleton';
+import { EmptyState } from '../../components/common/EmptyState';
+import { Breadcrumbs } from '../../components/common/Breadcrumbs';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
 import { IExchangeRequest } from '../../types';
 
 export const ExchangeRequestsPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { success, error: toastError } = useToast();
 
   const [exchanges, setExchanges] = useState<IExchangeRequest[]>([]);
   const [filterTab, setFilterTab] = useState<'all' | 'received' | 'sent'>('all');
@@ -21,7 +27,7 @@ export const ExchangeRequestsPage: React.FC = () => {
   const fetchExchanges = async () => {
     try {
       const res = await api.get('/exchanges');
-      if (res.data.success) {
+      if (res.data?.success) {
         setExchanges(res.data.exchanges || []);
       }
     } catch (err) {
@@ -38,11 +44,12 @@ export const ExchangeRequestsPage: React.FC = () => {
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
       const res = await api.put(`/exchanges/${id}/status`, { status: newStatus });
-      if (res.data.success) {
+      if (res.data?.success) {
+        success(`Request ${newStatus} successfully.`);
         fetchExchanges();
       }
     } catch (err: any) {
-      alert(err.message || 'Error updating request');
+      toastError(err.message || 'Error updating request');
     }
   };
 
@@ -60,15 +67,17 @@ export const ExchangeRequestsPage: React.FC = () => {
         subtitle="Manage incoming and outgoing proposals to trade knowledge with community members"
       />
 
-      <div className="p-8 max-w-7xl mx-auto w-full space-y-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 sm:space-y-8">
+        <Breadcrumbs items={[{ label: 'Exchange Requests' }]} />
+
         {/* Controls: Tabs & Filters */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-stone-200 pb-4">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 border-b border-stone-200 pb-4">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
             {(['all', 'received', 'sent'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setFilterTab(tab)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all ${
+                className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap ${
                   filterTab === tab
                     ? 'bg-forest-700 text-white shadow-sm'
                     : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
@@ -79,12 +88,12 @@ export const ExchangeRequestsPage: React.FC = () => {
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-stone-500">Status:</span>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <span className="text-xs font-bold text-stone-500 whitespace-nowrap">Status:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-700"
+              className="px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-forest-500/20"
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -97,39 +106,38 @@ export const ExchangeRequestsPage: React.FC = () => {
 
         {/* Requests List */}
         <div className="space-y-4">
-          {filteredExchanges.length === 0 ? (
-            <Card className="p-12 text-center">
-              <Repeat className="w-10 h-10 text-stone-300 mx-auto mb-3" />
-              <h4 className="text-base font-bold text-stone-800">No Exchange Requests Found</h4>
-              <p className="text-xs text-stone-500 mt-1 max-w-md mx-auto">
-                Explore the matching directory to connect with peers and propose knowledge exchanges!
-              </p>
-              <Button
-                variant="primary"
-                size="sm"
-                className="mt-4"
-                onClick={() => navigate('/matches')}
-              >
-                Find Swap Partners
-              </Button>
-            </Card>
+          {loading ? (
+            <div className="space-y-3">
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </div>
+          ) : filteredExchanges.length === 0 ? (
+            <EmptyState
+              title="No Exchange Requests Found"
+              description="Explore the matching directory to connect with peers and propose knowledge exchanges!"
+              action={{
+                label: 'Find Swap Partners',
+                onClick: () => navigate('/matches'),
+              }}
+            />
           ) : (
             filteredExchanges.map((exchange) => {
               const isReceiver = exchange.receiver._id === user?._id;
               const otherUser = isReceiver ? exchange.sender : exchange.receiver;
 
               return (
-                <Card key={exchange._id} className="p-6">
+                <Card key={exchange._id} className="p-4 sm:p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <img
+                    <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+                      <Avatar
                         src={otherUser.avatar}
-                        alt={otherUser.name}
-                        className="w-12 h-12 rounded-2xl object-cover border border-stone-200"
+                        name={otherUser.name}
+                        size="lg"
                       />
-                      <div>
-                        <div className="flex items-center gap-2.5">
-                          <h4 className="text-sm font-bold text-stone-900">{otherUser.name}</h4>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="text-sm font-bold text-stone-900 truncate">{otherUser.name}</h4>
                           <span className="text-[10px] uppercase font-bold text-stone-400">
                             {isReceiver ? 'Sent to you' : 'Sent by you'}
                           </span>
@@ -150,20 +158,20 @@ export const ExchangeRequestsPage: React.FC = () => {
                         </div>
 
                         {/* Trade terms */}
-                        <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 text-xs">
                           <span className="font-semibold text-stone-600">Offered:</span>
-                          <span className="font-bold text-forest-700 bg-forest-50 px-2 py-0.5 rounded border border-forest-100">
+                          <span className="font-bold text-forest-700 bg-forest-50 px-2 py-0.5 rounded border border-forest-100 truncate max-w-[140px] sm:max-w-none">
                             {exchange.skillOffered}
                           </span>
-                          <Repeat className="w-3.5 h-3.5 text-stone-400" />
+                          <Repeat className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                           <span className="font-semibold text-stone-600">Requested:</span>
-                          <span className="font-bold text-action bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
+                          <span className="font-bold text-action bg-orange-50 px-2 py-0.5 rounded border border-orange-100 truncate max-w-[140px] sm:max-w-none">
                             {exchange.skillWanted}
                           </span>
                         </div>
 
                         {exchange.message && (
-                          <p className="text-xs text-stone-600 mt-2 italic bg-stone-50 p-2.5 rounded-xl border border-stone-200/60 max-w-2xl">
+                          <p className="text-xs text-stone-600 mt-2 italic bg-stone-50 p-2.5 rounded-xl border border-stone-200/60 max-w-2xl break-words">
                             "{exchange.message}"
                           </p>
                         )}
@@ -171,7 +179,7 @@ export const ExchangeRequestsPage: React.FC = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                    <div className="flex items-center gap-2 self-end md:self-center shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-stone-100 w-full md:w-auto justify-end">
                       {isReceiver && exchange.status === 'pending' && (
                         <>
                           <Button
@@ -208,6 +216,7 @@ export const ExchangeRequestsPage: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate('/chat')}
+                        title="Chat with partner"
                       >
                         <MessageSquare className="w-4 h-4 text-stone-500" />
                       </Button>
@@ -222,4 +231,3 @@ export const ExchangeRequestsPage: React.FC = () => {
     </div>
   );
 };
-
