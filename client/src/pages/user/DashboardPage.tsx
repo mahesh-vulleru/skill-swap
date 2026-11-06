@@ -314,7 +314,7 @@ export const DashboardPage: React.FC = () => {
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => navigate('/exchange-requests')}
+                          onClick={() => navigate('/matches')}
                         >
                           Request Swap
                         </Button>

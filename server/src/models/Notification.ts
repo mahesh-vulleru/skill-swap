@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type NotificationType = 'exchange_request' | 'session_scheduled' | 'message_received' | 'review_received' | 'credits_awarded';
+export type NotificationType = 'exchange_request' | 'session_scheduled' | 'session_completed' | 'message_received' | 'review_received' | 'credits_awarded';
 
 export interface INotification extends Document {
   user: mongoose.Types.ObjectId;
@@ -19,7 +19,7 @@ const NotificationSchema = new Schema<INotification>(
     message: { type: String, required: true },
     type: {
       type: String,
-      enum: ['exchange_request', 'session_scheduled', 'message_received', 'review_received', 'credits_awarded'],
+      enum: ['exchange_request', 'session_scheduled', 'session_completed', 'message_received', 'review_received', 'credits_awarded'],
       required: true,
     },
     link: { type: String, default: '' },

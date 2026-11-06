@@ -7,11 +7,10 @@ interface AuthContextType {
   user: IUser | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<IUser | null>;
   register: (data: { name: string; email: string; password: string; role?: UserRole }) => Promise<void>;
   logout: () => void;
   updateUserProfile: (updatedData: Partial<IUser>) => Promise<void>;
-  switchDemoUser: (role: 'mentor' | 'learner' | 'admin') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchMe();
   }, [token]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<IUser | null> => {
     setLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
@@ -62,7 +61,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('skillswap_token', res.data.token);
         setToken(res.data.token);
         setUser(res.data.user);
+        return res.data.user;
       }
+      return null;
     } finally {
       setLoading(false);
     }
@@ -95,16 +96,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const switchDemoUser = async (role: 'mentor' | 'learner' | 'admin') => {
-    if (role === 'mentor') {
-      await login('elena@skillswap.com', 'password123');
-    } else if (role === 'learner') {
-      await login('marcus@skillswap.com', 'password123');
-    } else if (role === 'admin') {
-      await login('admin@skillswap.com', 'password123');
-    }
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -115,7 +106,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         updateUserProfile,
-        switchDemoUser,
       }}
     >
       {children}

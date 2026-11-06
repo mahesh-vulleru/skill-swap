@@ -8,9 +8,23 @@ import { AuthRequest } from '../middleware/authMiddleware';
 export const getSessions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?._id;
+    const userRole = req.user?.role;
     const { status } = req.query;
 
-    const filter: any = userId ? { $or: [{ mentor: userId }, { learner: userId }] } : {};
+    let filter: any = {};
+    if (userRole === 'mentor') {
+      // Mentors strictly retrieve only sessions they are teaching
+      filter = { mentor: userId };
+    } else if (userRole === 'learner') {
+      // Learners strictly retrieve only sessions they are attending
+      filter = { learner: userId };
+    } else if (userRole === 'admin') {
+      // Admins can see all platform sessions
+      filter = {};
+    } else {
+      filter = { $or: [{ mentor: userId }, { learner: userId }] };
+    }
+
     if (status && status !== 'all') {
       filter.status = status;
     }
@@ -29,10 +43,15 @@ export const getSessions = async (req: AuthRequest, res: Response): Promise<void
 export const createSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const currentUserId = req.user?._id;
-    const { partnerId, skill, topic, date, time, durationMinutes, mode, notes } = req.body;
+    const { partnerId, skill, topic, date, time, durationMinutes, mode, notes, exchangeId } = req.body;
 
     if (!partnerId || !skill || !topic || !date || !time) {
       res.status(400).json({ success: false, message: 'Partner, skill, topic, date, and time are required.' });
+      return;
+    }
+
+    if (currentUserId && currentUserId.toString() === partnerId.toString()) {
+      res.status(400).json({ success: false, message: 'Cannot schedule a session with yourself.' });
       return;
     }
 
@@ -48,6 +67,7 @@ export const createSession = async (req: AuthRequest, res: Response): Promise<vo
       meetingLink: `https://meet.google.com/ss-${Math.random().toString(36).substring(2, 7)}`,
       notes: notes || '',
       status: 'upcoming',
+      exchangeId: exchangeId || undefined,
     });
 
     // Notify partner
@@ -73,6 +93,8 @@ export const updateSessionStatus = async (req: AuthRequest, res: Response): Prom
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const currentUserId = req.user?._id?.toString();
+    const isAdmin = req.user?.role === 'admin';
 
     if (!['upcoming', 'ongoing', 'completed', 'cancelled'].includes(status)) {
       res.status(400).json({ success: false, message: 'Invalid status.' });
@@ -82,6 +104,35 @@ export const updateSessionStatus = async (req: AuthRequest, res: Response): Prom
     const session = await Session.findById(id);
     if (!session) {
       res.status(404).json({ success: false, message: 'Session not found.' });
+      return;
+    }
+
+    const mentorId = session.mentor.toString();
+    const learnerId = session.learner.toString();
+
+    // Authorization: Only participants or admin can update status
+    if (currentUserId !== mentorId && currentUserId !== learnerId && !isAdmin) {
+      res.status(403).json({
+        success: false,
+        message: 'Only session participants or administrators can update session status.',
+      });
+      return;
+    }
+
+    // Business Rules: Prevent invalid status transitions
+    if (session.status === 'cancelled' && status === 'completed') {
+      res.status(400).json({
+        success: false,
+        message: 'Cannot complete a session that has been cancelled.',
+      });
+      return;
+    }
+
+    if (session.status === 'completed' && status === 'completed') {
+      res.status(400).json({
+        success: false,
+        message: 'Session is already marked as completed.',
+      });
       return;
     }
 
@@ -106,6 +157,23 @@ export const updateSessionStatus = async (req: AuthRequest, res: Response): Prom
       await User.findByIdAndUpdate(session.learner, {
         $inc: { sessionsCompleted: 1, reputationScore: 5 },
       });
+
+      // Notify both participants
+      await Notification.create({
+        user: session.mentor,
+        title: 'Session Completed (+10 Credits)',
+        message: `You earned 10 credits for completing your mentorship session on '${session.skill}'!`,
+        type: 'session_completed',
+        link: '/credits',
+      });
+
+      await Notification.create({
+        user: session.learner,
+        title: 'Session Completed',
+        message: `Your learning session on '${session.skill}' is marked completed. Leave a review for your mentor!`,
+        type: 'session_completed',
+        link: `/reviews?sessionId=${session._id}&partnerId=${session.mentor}`,
+      });
     }
 
     res.status(200).json({ success: true, message: `Session status updated to ${status}!`, session });
@@ -113,4 +181,3 @@ export const updateSessionStatus = async (req: AuthRequest, res: Response): Prom
     res.status(500).json({ success: false, message: error.message || 'Error updating session.' });
   }
 };
-

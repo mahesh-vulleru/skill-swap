@@ -8,25 +8,28 @@ import { Card } from '../../components/common/Card';
 import { Input } from '../../components/common/Input';
 
 export const LoginPage: React.FC = () => {
-  const { login, switchDemoUser } = useAuth();
+  const { login } = useAuth();
   const { info } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const destination = (location.state as any)?.from?.pathname || '/dashboard';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
-      navigate(destination, { replace: true });
+      const loggedInUser = await login(email, password);
+      if (loggedInUser?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (loggedInUser?.role === 'mentor') {
+        navigate('/mentor/dashboard', { replace: true });
+      } else {
+        navigate('/learner/dashboard', { replace: true });
+      }
     } catch (err: any) {
       setError(err.message || 'Invalid credentials');
     } finally {
@@ -34,22 +37,8 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = async (role: 'mentor' | 'learner' | 'admin') => {
-    setError(null);
-    setLoading(true);
-    try {
-      await switchDemoUser(role);
-      if (role === 'admin') navigate('/admin');
-      else navigate(destination, { replace: true });
-    } catch (err: any) {
-      setError(err.message || 'Failed to login with demo account');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleForgotPassword = () => {
-    info('Demo password for all accounts is: password123', 'Password Hint');
+    info('Default seed password for all demo accounts is: password123', 'Password Hint');
   };
 
   return (
@@ -80,37 +69,7 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* Quick 1-Click Demo Buttons */}
-          <div className="mb-6 p-3.5 rounded-xl bg-forest-50 border border-forest-200/80">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-forest-900 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-action" />
-              Quick 1-Click Demo Logins:
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('mentor')}
-                className="py-1.5 px-2 bg-white hover:bg-forest-100 border border-forest-200 rounded-lg text-xs font-bold text-forest-800 transition-colors shadow-xs active:scale-95"
-              >
-                Mentor
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('learner')}
-                className="py-1.5 px-2 bg-white hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold text-amber-900 transition-colors shadow-xs active:scale-95"
-              >
-                Learner
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin')}
-                className="py-1.5 px-2 bg-white hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold text-purple-900 transition-colors shadow-xs active:scale-95"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
-
+          {/* Regular Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Email Address"

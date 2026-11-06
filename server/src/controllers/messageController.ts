@@ -21,7 +21,7 @@ export const getConversations = async (req: AuthRequest, res: Response): Promise
       if (m.receiver.toString() !== currentUserId.toString()) partnerIds.add(m.receiver.toString());
     });
 
-    const partners = await User.find({ _id: { $in: Array.from(partnerIds) } }).select('name avatar role status rating');
+    const partners = await User.find({ _id: { $in: Array.from(partnerIds) } }).select('name avatar role status rating location');
 
     const conversations = partners.map((partner) => {
       const lastMsg = messages.find(
@@ -53,6 +53,11 @@ export const getMessagesWithUser = async (req: AuthRequest, res: Response): Prom
     const currentUserId = req.user?._id;
     const { userId } = req.params;
 
+    if (!currentUserId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const messages = await Message.find({
       $or: [
         { sender: currentUserId, receiver: userId },
@@ -63,7 +68,7 @@ export const getMessagesWithUser = async (req: AuthRequest, res: Response): Prom
       .populate('sender', 'name avatar')
       .populate('receiver', 'name avatar');
 
-    // Mark as read
+    // Mark incoming messages as read
     await Message.updateMany(
       { sender: userId, receiver: currentUserId, read: false },
       { $set: { read: true } }
@@ -85,6 +90,11 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
+    if (senderId && senderId.toString() === receiverId.toString()) {
+      res.status(400).json({ success: false, message: 'Cannot send messages to yourself.' });
+      return;
+    }
+
     const message = await Message.create({
       sender: senderId,
       receiver: receiverId,
@@ -102,4 +112,3 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<void
     res.status(500).json({ success: false, message: error.message || 'Error sending message.' });
   }
 };
-
