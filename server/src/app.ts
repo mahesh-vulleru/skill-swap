@@ -9,6 +9,7 @@ import healthRoutes from './routes/healthRoutes';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import skillRoutes from './routes/skillRoutes';
+import categoryRoutes from './routes/categoryRoutes';
 import matchRoutes from './routes/matchRoutes';
 import exchangeRoutes from './routes/exchangeRoutes';
 import sessionRoutes from './routes/sessionRoutes';
@@ -50,7 +51,7 @@ export const createApp = (): Application => {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/skills', skillRoutes);
-  app.use('/api/categories', skillRoutes);
+  app.use('/api/categories', categoryRoutes);
   app.use('/api/matches', matchRoutes);
   app.use('/api/exchanges', exchangeRoutes);
   app.use('/api/sessions', sessionRoutes);

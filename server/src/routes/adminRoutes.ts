@@ -4,10 +4,12 @@ import { authenticate, requireRole } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// In development, allow access for admin demonstration
+// Enforce authentication and administrative privilege on all admin routes
+router.use(authenticate);
+router.use(requireRole(['admin']));
+
 router.get('/users', getAllUsersAdmin);
 router.put('/users/:id', updateUserStatusAdmin);
 router.delete('/users/:id', deleteUserAdmin);
 
 export default router;
-
