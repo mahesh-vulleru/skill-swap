@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Sparkles, BookOpen, Users, LogIn, Menu, X, ShieldCheck } from 'lucide-react';
+import { ArrowLeftRight, Sparkles, BookOpen, LogIn, Menu, X, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
 
 export const Navbar: React.FC = () => {
-  const { user, logout, switchDemoUser } = useAuth();
+  const { user, switchDemoUser } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -21,7 +21,9 @@ export const Navbar: React.FC = () => {
             <div className="text-xl font-bold tracking-tight text-forest-900 flex items-center gap-1.5 font-['Plus_Jakarta_Sans']">
               Skill<span className="text-action">Swap</span>
             </div>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-600">Knowledge Exchange</p>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-600">
+              Knowledge Exchange
+            </p>
           </div>
         </Link>
 
@@ -99,7 +101,8 @@ export const Navbar: React.FC = () => {
         <div className="md:hidden">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            className="p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -108,32 +111,88 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-stone-200 px-6 py-4 space-y-3">
+        <div className="md:hidden bg-white border-b border-stone-200 px-4 sm:px-6 py-4 space-y-3 animate-in slide-in-from-top-2 duration-150">
           <Link
             to="/skills"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-semibold text-stone-700 py-2"
+            className="flex items-center gap-2 text-sm font-semibold text-stone-700 py-2 hover:text-forest-700"
           >
+            <BookOpen className="w-4 h-4 text-forest-600" />
             Explore Skills
           </Link>
           <Link
             to="/matches"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-semibold text-stone-700 py-2"
+            className="flex items-center gap-2 text-sm font-semibold text-stone-700 py-2 hover:text-forest-700"
           >
-            Find Partners
+            <Sparkles className="w-4 h-4 text-action" />
+            Find Mentors
           </Link>
+          <a
+            href="#how-it-works"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm font-semibold text-stone-700 py-2 hover:text-forest-700"
+          >
+            How It Works
+          </a>
+
+          {/* Quick Demo in Mobile Menu */}
+          <div className="pt-2 border-t border-stone-100">
+            <p className="text-[10px] uppercase font-bold text-stone-400 mb-2">Switch Demo Account:</p>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => { switchDemoUser('mentor'); setMobileMenuOpen(false); navigate('/dashboard'); }}
+                className="py-1.5 px-2 bg-stone-100 hover:bg-forest-50 text-forest-800 text-xs font-semibold rounded-lg text-center"
+              >
+                Mentor
+              </button>
+              <button
+                onClick={() => { switchDemoUser('learner'); setMobileMenuOpen(false); navigate('/dashboard'); }}
+                className="py-1.5 px-2 bg-stone-100 hover:bg-amber-50 text-amber-800 text-xs font-semibold rounded-lg text-center"
+              >
+                Learner
+              </button>
+              <button
+                onClick={() => { switchDemoUser('admin'); setMobileMenuOpen(false); navigate('/admin'); }}
+                className="py-1.5 px-2 bg-purple-50 text-purple-800 text-xs font-semibold rounded-lg text-center"
+              >
+                Admin
+              </button>
+            </div>
+          </div>
+
           <div className="pt-2 border-t border-stone-100 flex flex-col gap-2">
             {user ? (
-              <Button variant="forest" size="md" onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}>
+              <Button
+                variant="forest"
+                size="md"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate('/dashboard');
+                }}
+              >
                 Open Dashboard
               </Button>
             ) : (
               <>
-                <Button variant="outline" size="md" onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}>
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/login');
+                  }}
+                >
                   Sign In
                 </Button>
-                <Button variant="primary" size="md" onClick={() => { setMobileMenuOpen(false); navigate('/register'); }}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/register');
+                  }}
+                >
                   Get Started Free
                 </Button>
               </>
@@ -144,4 +203,3 @@ export const Navbar: React.FC = () => {
     </header>
   );
 };
-
