@@ -43,3 +43,4 @@ export const useSidebar = (): SidebarContextType => {
   }
   return context;
 };
+

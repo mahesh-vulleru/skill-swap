@@ -141,3 +141,4 @@ To eliminate styling duplication and ensure accessibility and responsiveness, th
 8. **`Avatar`**: User avatar with online indicator and fallback initials.
 9. **`Breadcrumbs`**: Contextual path indicator for authenticated pages.
 10. **`Pagination`**: Clean page switching control for skills and user tables.
+

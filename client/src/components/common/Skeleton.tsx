@@ -68,3 +68,4 @@ export const SkeletonRow: React.FC = () => (
     <Skeleton className="h-8 w-24 rounded-lg" />
   </div>
 );
+
