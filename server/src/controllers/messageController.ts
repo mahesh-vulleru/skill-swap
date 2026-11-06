@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { Message } from '../models/Message';
 import { User } from '../models/User';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { isValidObjectId } from '../utils/security';
 
 export const getConversations = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -38,7 +39,7 @@ export const getConversations = async (req: AuthRequest, res: Response): Promise
         lastMessage: lastMsg?.content || 'Started conversation',
         timestamp: lastMsg?.createdAt || new Date(),
         unreadCount,
-        online: true,
+        online: partner.status === 'active',
       };
     });
 
@@ -51,7 +52,17 @@ export const getConversations = async (req: AuthRequest, res: Response): Promise
 export const getMessagesWithUser = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const currentUserId = req.user?._id;
+    if (!currentUserId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const { userId } = req.params;
+
+    if (!isValidObjectId(userId)) {
+      res.status(400).json({ success: false, message: 'Invalid partner user ID.' });
+      return;
+    }
 
     const messages = await Message.find({
       $or: [
@@ -78,6 +89,11 @@ export const getMessagesWithUser = async (req: AuthRequest, res: Response): Prom
 export const sendMessage = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const senderId = req.user?._id;
+    if (!senderId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const { receiverId, content, attachmentUrl } = req.body;
 
     if (!receiverId || !content) {
@@ -85,11 +101,38 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
+    if (!isValidObjectId(receiverId)) {
+      res.status(400).json({ success: false, message: 'Invalid receiver ID format.' });
+      return;
+    }
+
+    if (senderId.toString() === receiverId.toString()) {
+      res.status(400).json({ success: false, message: 'Cannot send message to yourself.' });
+      return;
+    }
+
+    const cleanContent = String(content).trim();
+    if (!cleanContent) {
+      res.status(400).json({ success: false, message: 'Message content cannot be empty.' });
+      return;
+    }
+
+    if (cleanContent.length > 5000) {
+      res.status(400).json({ success: false, message: 'Message content exceeds 5000 characters.' });
+      return;
+    }
+
+    const receiverExists = await User.findById(receiverId);
+    if (!receiverExists || receiverExists.status === 'inactive') {
+      res.status(404).json({ success: false, message: 'Recipient not found or inactive.' });
+      return;
+    }
+
     const message = await Message.create({
       sender: senderId,
       receiver: receiverId,
-      content,
-      attachmentUrl,
+      content: cleanContent,
+      attachmentUrl: attachmentUrl ? String(attachmentUrl).trim() : undefined,
       read: false,
     });
 
@@ -97,9 +140,14 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<void
       .populate('sender', 'name avatar')
       .populate('receiver', 'name avatar');
 
+    // Real-time broadcast to receiver's private room via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${receiverId}`).emit('receive_message', populated);
+    }
+
     res.status(201).json({ success: true, message: populated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || 'Error sending message.' });
   }
 };
-

@@ -68,3 +68,30 @@ export const requireRole = (allowedRoles: UserRole[]) => {
     next();
   };
 };
+
+export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      next();
+      return;
+    }
+
+    const token = authHeader.split(' ')[1];
+    if (!token || token.trim() === '') {
+      next();
+      return;
+    }
+
+    const decoded = jwt.verify(token, config.jwtSecret) as { id: string; role: string };
+    const user = await User.findById(decoded.id).select('-password');
+    if (user && user.status === 'active') {
+      req.user = user;
+    }
+    next();
+  } catch {
+    // Optional auth - proceed unauthenticated if verification fails
+    next();
+  }
+};
+

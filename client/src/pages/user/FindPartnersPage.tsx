@@ -204,7 +204,7 @@ export const FindPartnersPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() => navigate('/chat')}
+                    onClick={() => navigate(`/chat/${match.user._id}`)}
                   >
                     <MessageSquare className="w-3.5 h-3.5" /> Chat
                   </Button>

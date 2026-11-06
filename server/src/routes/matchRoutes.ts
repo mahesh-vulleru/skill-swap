@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { getMatches } from '../controllers/matchController';
+import { optionalAuthenticate } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Allow optional auth header extraction
-router.get('/', getMatches);
+// Extract authenticated user profile when token is present
+router.get('/', optionalAuthenticate, getMatches);
 
 export default router;
 

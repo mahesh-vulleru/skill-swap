@@ -8,39 +8,92 @@ import { Review } from '../models/Review';
 
 export const getPlatformAnalytics = async (req: Request, res: Response): Promise<void> => {
   try {
-    const totalUsers = await User.countDocuments();
-    const activeUsers = await User.countDocuments({ status: 'active' });
-    const totalExchanges = await ExchangeRequest.countDocuments();
-    const completedExchanges = await ExchangeRequest.countDocuments({ status: 'completed' });
-    const totalSessions = await Session.countDocuments();
-    const activeSessions = await Session.countDocuments({ status: { $in: ['upcoming', 'ongoing'] } });
-    const completedSessions = await Session.countDocuments({ status: 'completed' });
-    const totalSkills = await Skill.countDocuments();
+    const [
+      totalUsers,
+      activeUsers,
+      totalExchanges,
+      completedExchanges,
+      totalSessions,
+      activeSessions,
+      completedSessions,
+      totalSkills,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ status: 'active' }),
+      ExchangeRequest.countDocuments(),
+      ExchangeRequest.countDocuments({ status: 'completed' }),
+      Session.countDocuments(),
+      Session.countDocuments({ status: { $in: ['upcoming', 'ongoing'] } }),
+      Session.countDocuments({ status: 'completed' }),
+      Skill.countDocuments(),
+    ]);
 
-    const reviews = await Review.find().select('rating');
-    const avgRating = reviews.length > 0
-      ? Number((reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(2))
-      : 4.9;
+    // Real Credit Circulation from database
+    const creditAgg = await User.aggregate([
+      { $group: { _id: null, totalCredits: { $sum: '$credits' } } },
+    ]);
+    const totalCreditsCirculation = creditAgg.length > 0 ? creditAgg[0].totalCredits : 0;
 
-    // Monthly Exchange Activity Data (for Recharts)
-    const monthlyActivity = [
-      { month: 'Jun', exchanges: 42, sessions: 38, newUsers: 25 },
-      { month: 'Jul', exchanges: 65, sessions: 58, newUsers: 45 },
-      { month: 'Aug', exchanges: 94, sessions: 86, newUsers: 72 },
-      { month: 'Sep', exchanges: 130, sessions: 118, newUsers: 95 },
-      { month: 'Oct', exchanges: 185, sessions: 164, newUsers: 140 },
-      { month: 'Nov', exchanges: 240, sessions: 215, newUsers: 198 },
-    ];
+    // Real Average Rating
+    const reviewAgg = await Review.aggregate([
+      { $group: { _id: null, avgRating: { $avg: '$rating' } } },
+    ]);
+    const avgRating = reviewAgg.length > 0 ? Number(reviewAgg[0].avgRating.toFixed(2)) : 5.0;
 
-    // Category Distribution Data (for Recharts Pie/Bar)
+    // Real Monthly Activity for the past 6 calendar months
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const monthlyActivity = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const startOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+      const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999);
+      const monthLabel = monthNames[monthDate.getMonth()];
+
+      const [exchanges, sessions, newUsers] = await Promise.all([
+        ExchangeRequest.countDocuments({
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+        }),
+        Session.countDocuments({
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+        }),
+        User.countDocuments({
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+        }),
+      ]);
+
+      monthlyActivity.push({
+        month: monthLabel,
+        exchanges,
+        sessions,
+        newUsers,
+      });
+    }
+
+    // Real Category Distribution from Skills catalog
+    const categoryCounts = await Skill.aggregate([
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+    ]);
+    const categoryCountMap = new Map<string, number>();
+    categoryCounts.forEach((c) => {
+      if (c._id) categoryCountMap.set(String(c._id).toLowerCase(), c.count);
+    });
+
     const categories = await SkillCategory.find();
-    const categoryDistribution = categories.map((cat) => ({
-      name: cat.name,
-      skills: cat.skillCount || 10,
-      share: Math.floor(Math.random() * 20) + 15,
-    }));
+    const sumSkills = totalSkills > 0 ? totalSkills : 1;
 
-    // Top Skills
+    const categoryDistribution = categories.map((cat) => {
+      const skillCount = categoryCountMap.get(cat.name.toLowerCase()) || cat.skillCount || 0;
+      const share = Math.round((skillCount / sumSkills) * 100);
+      return {
+        name: cat.name,
+        skills: skillCount,
+        share,
+      };
+    });
+
+    // Top Skills by Learner Count
     const topSkills = await Skill.find().sort({ learnerCount: -1 }).limit(6);
 
     res.status(200).json({
@@ -55,6 +108,7 @@ export const getPlatformAnalytics = async (req: Request, res: Response): Promise
         completedSessions,
         totalSkills,
         avgRating,
+        totalCreditsCirculation,
       },
       monthlyActivity,
       categoryDistribution,
@@ -64,4 +118,3 @@ export const getPlatformAnalytics = async (req: Request, res: Response): Promise
     res.status(500).json({ success: false, message: error.message || 'Error fetching analytics.' });
   }
 };
-

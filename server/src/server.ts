@@ -25,16 +25,19 @@ const startServer = async () => {
     },
   });
 
+  app.set('io', io);
   setupSocket(io);
 
   // Connect to MongoDB
   await connectDB();
 
-  // Auto-seed if database is fresh
-  try {
-    await seedDatabase();
-  } catch (err) {
-    console.warn('[Server] Seed check finished:', err);
+  // Auto-seed if database is fresh (disabled in production unless explicitly opted in)
+  if (config.nodeEnv !== 'production' || process.env.ALLOW_PROD_SEED) {
+    try {
+      await seedDatabase();
+    } catch (err) {
+      console.warn('[Server] Seed check finished:', err);
+    }
   }
 
   // Start listening

@@ -147,6 +147,7 @@ export interface IAnalyticsData {
     completedSessions: number;
     totalSkills: number;
     avgRating: number;
+    totalCreditsCirculation?: number;
   };
   monthlyActivity: Array<{ month: string; exchanges: number; sessions: number; newUsers: number }>;
   categoryDistribution: Array<{ name: string; skills: number; share: number }>;
