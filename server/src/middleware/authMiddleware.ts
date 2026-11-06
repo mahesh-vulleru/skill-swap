@@ -16,23 +16,36 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
 
     const token = authHeader.split(' ')[1];
+    if (!token || token.trim() === '') {
+      res.status(401).json({ success: false, message: 'Authentication token is empty.' });
+      return;
+    }
+
     const decoded = jwt.verify(token, config.jwtSecret) as { id: string; role: string };
 
     const user = await User.findById(decoded.id).select('-password');
     if (!user) {
-      res.status(401).json({ success: false, message: 'User not found or token invalid.' });
+      res.status(401).json({ success: false, message: 'User not found or token revoked.' });
       return;
     }
 
     if (user.status === 'inactive') {
-      res.status(403).json({ success: false, message: 'Your account has been deactivated. Contact support.' });
+      res.status(403).json({ success: false, message: 'Your account has been deactivated. Please contact support.' });
       return;
     }
 
     req.user = user;
     next();
-  } catch (error) {
-    res.status(401).json({ success: false, message: 'Invalid or expired token.' });
+  } catch (error: any) {
+    if (error.name === 'TokenExpiredError') {
+      res.status(401).json({ success: false, message: 'Token has expired. Please log in again.', code: 'TOKEN_EXPIRED' });
+      return;
+    }
+    if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ success: false, message: 'Invalid authentication token.', code: 'TOKEN_INVALID' });
+      return;
+    }
+    res.status(401).json({ success: false, message: 'Authentication failed.' });
   }
 };
 
@@ -44,11 +57,14 @@ export const requireRole = (allowedRoles: UserRole[]) => {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      res.status(403).json({ success: false, message: 'Access denied: insufficient permissions.' });
+      res.status(403).json({
+        success: false,
+        message: `Access denied. This action requires one of the following roles: [${allowedRoles.join(', ')}]. Current role: '${req.user.role}'.`,
+        code: 'FORBIDDEN_ROLE',
+      });
       return;
     }
 
     next();
   };
 };
-
