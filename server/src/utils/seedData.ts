@@ -14,6 +14,11 @@ import { Achievement } from '../models/Achievement';
 
 export const seedDatabase = async (): Promise<void> => {
   try {
+    if (config.nodeEnv === 'production' && !process.env.ALLOW_PROD_SEED) {
+      console.log('[Seed] Production environment detected. Skipping auto-seed to preserve database integrity.');
+      return;
+    }
+
     if (mongoose.connection.readyState !== 1) {
       await mongoose.connect(config.mongoUri);
     }

@@ -51,12 +51,13 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ['learner', 'mentor', 'learner_mentor', 'admin'],
       default: 'learner_mentor',
+      index: true,
     },
-    credits: { type: Number, default: 30 },
-    rating: { type: Number, default: 4.9 },
+    credits: { type: Number, default: 30, min: 0 },
+    rating: { type: Number, default: 4.9, min: 0, max: 5 },
     reputationScore: { type: Number, default: 120 },
-    reviewCount: { type: Number, default: 0 },
-    sessionsCompleted: { type: Number, default: 0 },
+    reviewCount: { type: Number, default: 0, min: 0 },
+    sessionsCompleted: { type: Number, default: 0, min: 0 },
     skillsOffered: [
       {
         name: { type: String, required: true },
@@ -82,11 +83,15 @@ const UserSchema = new Schema<IUser>(
       },
     ],
     availability: { type: String, default: 'Weekdays after 6 PM, Weekends' },
-    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
     badges: { type: [String], default: ['Top Mentor', 'Active Learner', 'Community Star'] },
   },
   { timestamps: true }
 );
+
+UserSchema.index({ 'skillsOffered.name': 1 });
+UserSchema.index({ 'skillsWanted.name': 1 });
+UserSchema.index({ rating: -1, reputationScore: -1 });
 
 export const User = mongoose.model<IUser>('User', UserSchema);
 

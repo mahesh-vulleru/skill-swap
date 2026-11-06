@@ -164,8 +164,19 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
                       notifications.map((notif) => (
                         <div
                           key={notif._id}
-                          onClick={() => {
+                          onClick={async () => {
                             setNotifOpen(false);
+                            if (!notif.read) {
+                              try {
+                                await api.put(`/notifications/${notif._id}/read`);
+                                setNotifications((prev) =>
+                                  prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n))
+                                );
+                                setUnreadCount((c) => Math.max(0, c - 1));
+                              } catch (err) {
+                                console.error('Failed to mark notification read:', err);
+                              }
+                            }
                             if (notif.link) navigate(notif.link);
                           }}
                           className={`p-3.5 hover:bg-stone-50 cursor-pointer transition-colors ${

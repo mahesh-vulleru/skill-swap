@@ -226,7 +226,13 @@ export const MySessionsPage: React.FC = () => {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => navigate('/reviews')}
+                            onClick={() =>
+                              navigate(
+                                `/reviews?sessionId=${session._id}&revieweeId=${partner?._id}&skill=${encodeURIComponent(
+                                  session.skill
+                                )}`
+                              )
+                            }
                           >
                             Leave Review
                           </Button>

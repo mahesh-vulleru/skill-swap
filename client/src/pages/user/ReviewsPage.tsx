@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Star, Plus, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/common/Card';
@@ -16,18 +17,23 @@ import { IReview, IUser } from '../../types';
 
 export const ReviewsPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const { success: toastSuccess, error: toastError } = useToast();
 
   const [reviews, setReviews] = useState<IReview[]>([]);
   const [partners, setPartners] = useState<IUser[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const paramRevieweeId = searchParams.get('revieweeId');
+  const paramSessionId = searchParams.get('sessionId');
+  const paramSkill = searchParams.get('skill');
+
   // Review Form state
-  const [selectedRevieweeId, setSelectedRevieweeId] = useState('');
+  const [selectedRevieweeId, setSelectedRevieweeId] = useState(paramRevieweeId || '');
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('');
-  const [skillSwapped, setSkillSwapped] = useState('React & TypeScript');
+  const [skillSwapped, setSkillSwapped] = useState(paramSkill || 'React & TypeScript');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchReviews = async () => {
@@ -49,10 +55,15 @@ export const ReviewsPage: React.FC = () => {
       if (res.data?.success) {
         const others = (res.data.users || []).filter((u: IUser) => u._id !== user?._id);
         setPartners(others);
-        if (others.length > 0) setSelectedRevieweeId(others[0]._id);
+        if (paramRevieweeId) {
+          setSelectedRevieweeId(paramRevieweeId);
+          setIsModalOpen(true);
+        } else if (!selectedRevieweeId && others.length > 0) {
+          setSelectedRevieweeId(others[0]._id);
+        }
       }
     });
-  }, [user]);
+  }, [user, paramRevieweeId]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +76,7 @@ export const ReviewsPage: React.FC = () => {
         rating,
         feedback,
         skillSwapped,
+        ...(paramSessionId ? { sessionId: paramSessionId } : {}),
       });
 
       if (res.data?.success) {

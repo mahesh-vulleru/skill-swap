@@ -19,11 +19,14 @@ export const ScheduleSessionPage: React.FC = () => {
   const { user } = useAuth();
   const { success: toastSuccess, error: toastError } = useToast();
 
+  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const [partners, setPartners] = useState<IUser[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState(searchParams.get('partnerId') || '');
   const [skill, setSkill] = useState(searchParams.get('skill') || '');
   const [topic, setTopic] = useState('');
-  const [date, setDate] = useState('2026-11-12');
+  const [date, setDate] = useState(tomorrowStr);
   const [time, setTime] = useState('18:00');
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [mode, setMode] = useState<'Google Meet' | 'Zoom' | 'SkillSwap Live Video'>('Google Meet');

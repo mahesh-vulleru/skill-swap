@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { IUser, UserRole } from '../types';
 import { api } from '../services/api';
-import { getSocket } from '../services/socket';
+import { getSocket, disconnectSocket } from '../services/socket';
 
 interface AuthContextType {
   user: IUser | null;
@@ -83,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    disconnectSocket();
     localStorage.removeItem('skillswap_token');
     setToken(null);
     setUser(null);

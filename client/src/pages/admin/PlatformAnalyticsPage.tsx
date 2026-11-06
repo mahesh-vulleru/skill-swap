@@ -63,9 +63,9 @@ export const PlatformAnalyticsPage: React.FC = () => {
             <Card className="p-5">
               <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">Total Completed Sessions</span>
               <div className="text-2xl font-extrabold text-stone-900 mt-1 font-['Plus_Jakarta_Sans'] flex items-center justify-between">
-                <span>{data?.stats?.completedSessions || 1}</span>
+                <span>{data?.stats?.completedSessions ?? 0}</span>
                 <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center">
-                  <ArrowUpRight className="w-3.5 h-3.5" /> +24% MoM
+                  <ArrowUpRight className="w-3.5 h-3.5" /> Verified
                 </span>
               </div>
               <p className="text-[11px] text-stone-400 mt-2">Zero drop-off rate</p>
@@ -74,7 +74,7 @@ export const PlatformAnalyticsPage: React.FC = () => {
             <Card className="p-5">
               <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">Avg Satisfaction Score</span>
               <div className="text-2xl font-extrabold text-amber-500 mt-1 font-['Plus_Jakarta_Sans'] flex items-center justify-between">
-                <span>{data?.stats?.avgRating || 4.95} ★</span>
+                <span>{data?.stats?.avgRating ?? 5.0} ★</span>
                 <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
                   Verified
                 </span>
@@ -85,20 +85,20 @@ export const PlatformAnalyticsPage: React.FC = () => {
             <Card className="p-5">
               <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">Total Skills Catalog</span>
               <div className="text-2xl font-extrabold text-stone-900 mt-1 font-['Plus_Jakarta_Sans'] flex items-center justify-between">
-                <span>{data?.stats?.totalSkills || 6}</span>
+                <span>{data?.stats?.totalSkills ?? 0}</span>
                 <span className="text-xs font-bold text-forest-700 bg-forest-50 px-2 py-0.5 rounded-full">
-                  6 Categories
+                  Active
                 </span>
               </div>
-              <p className="text-[11px] text-stone-400 mt-2">Programming & Design leading</p>
+              <p className="text-[11px] text-stone-400 mt-2">Skills across catalog</p>
             </Card>
 
             <Card className="p-5">
               <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">Credit Circulation</span>
               <div className="text-2xl font-extrabold text-action mt-1 font-['Plus_Jakarta_Sans'] flex items-center justify-between">
-                <span>1,240 CR</span>
+                <span>{data?.stats?.totalCreditsCirculation?.toLocaleString() ?? 0} CR</span>
                 <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                  High Velocity
+                  In Circulation
                 </span>
               </div>
               <p className="text-[11px] text-stone-400 mt-2">Egalitarian learning economy</p>

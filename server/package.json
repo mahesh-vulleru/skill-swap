@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed": "tsx src/utils/seedData.ts",
-    "test": "tsx src/test/foundationTest.ts",
+    "test": "tsx src/test/securityAuditTest.ts",
+    "test:security": "tsx src/test/securityAuditTest.ts",
     "test:foundation": "tsx src/test/foundationTest.ts"
   },
   "dependencies": {

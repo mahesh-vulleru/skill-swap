@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { Send, Paperclip, MessageSquare, Circle, CheckCheck, ArrowLeft } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Button } from '../../components/common/Button';
@@ -12,6 +13,7 @@ import { IMessage, IConversation, IUser } from '../../types';
 
 export const ChatPage: React.FC = () => {
   const { user } = useAuth();
+  const { userId: urlUserId } = useParams<{ userId?: string }>();
   const socket = getSocket(user?._id);
   const { info } = useToast();
 
@@ -28,9 +30,10 @@ export const ChatPage: React.FC = () => {
     try {
       const res = await api.get('/messages/conversations');
       if (res.data?.success) {
-        setConversations(res.data.conversations || []);
-        if (!selectedPartner && res.data.conversations?.length > 0) {
-          setSelectedPartner(res.data.conversations[0].partner);
+        const convList = res.data.conversations || [];
+        setConversations(convList);
+        if (!urlUserId && !selectedPartner && convList.length > 0) {
+          setSelectedPartner(convList[0].partner);
         }
       }
     } catch (err) {
@@ -43,6 +46,28 @@ export const ChatPage: React.FC = () => {
   useEffect(() => {
     fetchConversations();
   }, [user]);
+
+  // Handle URL partner parameter: /chat/:userId
+  useEffect(() => {
+    if (!urlUserId) return;
+
+    // Check if partner already in conversation list
+    const found = conversations.find((c) => c.partner._id === urlUserId);
+    if (found) {
+      setSelectedPartner(found.partner);
+      setMobileView('chat');
+    } else {
+      // Fetch user profile from API and initiate chat
+      api.get(`/users/${urlUserId}`)
+        .then((res) => {
+          if (res.data?.success && res.data.user) {
+            setSelectedPartner(res.data.user);
+            setMobileView('chat');
+          }
+        })
+        .catch(console.error);
+    }
+  }, [urlUserId, conversations]);
 
   // Fetch messages for selected partner
   useEffect(() => {
@@ -58,21 +83,23 @@ export const ChatPage: React.FC = () => {
 
     // Listen for incoming messages from Socket.IO
     const handleReceiveMessage = (msg: IMessage) => {
-      if (
-        (typeof msg.sender === 'object' && msg.sender._id === selectedPartner._id) ||
-        (typeof msg.receiver === 'object' && msg.receiver._id === selectedPartner._id)
-      ) {
-        setMessages((prev) => [...prev, msg]);
+      const partnerId = selectedPartner._id;
+      const msgSenderId = typeof msg.sender === 'object' ? msg.sender._id : msg.sender;
+      const msgReceiverId = typeof msg.receiver === 'object' ? msg.receiver._id : msg.receiver;
+
+      if (msgSenderId === partnerId || msgReceiverId === partnerId) {
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
       }
       fetchConversations();
     };
 
     socket.on('receive_message', handleReceiveMessage);
-    socket.on('message_sent', handleReceiveMessage);
 
     return () => {
       socket.off('receive_message', handleReceiveMessage);
-      socket.off('message_sent', handleReceiveMessage);
     };
   }, [selectedPartner]);
 
@@ -89,12 +116,7 @@ export const ChatPage: React.FC = () => {
     setInputMessage('');
 
     try {
-      socket.emit('send_message', {
-        senderId: user._id,
-        receiverId: selectedPartner._id,
-        content,
-      });
-
+      // REST API creates message and broadcasts via Socket.IO to receiver, eliminating duplicates
       const res = await api.post('/messages', {
         receiverId: selectedPartner._id,
         content,
