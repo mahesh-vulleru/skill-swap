@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ShieldCheck, Trash2, Edit2, CheckCircle2, XCircle, Coins, Users } from 'lucide-react';
+import { Search, Trash2, Edit2, CheckCircle2, XCircle } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
+import { Avatar } from '../../components/common/Avatar';
+import { Input } from '../../components/common/Input';
+import { Select } from '../../components/common/Select';
+import { ConfirmationDialog } from '../../components/common/ConfirmationDialog';
+import { Breadcrumbs } from '../../components/common/Breadcrumbs';
+import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
 import { IUser, UserRole } from '../../types';
 
 export const UserManagementPage: React.FC = () => {
+  const { success: toastSuccess, error: toastError } = useToast();
+
   const [users, setUsers] = useState<IUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
@@ -21,6 +29,10 @@ export const UserManagementPage: React.FC = () => {
   const [editCredits, setEditCredits] = useState<number>(30);
   const [editStatus, setEditStatus] = useState<'active' | 'inactive'>('active');
 
+  // Delete User Confirmation State
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
+
   const fetchUsers = async () => {
     try {
       const query = new URLSearchParams();
@@ -29,7 +41,7 @@ export const UserManagementPage: React.FC = () => {
       if (selectedStatus !== 'all') query.append('status', selectedStatus);
 
       const res = await api.get(`/admin/users?${query.toString()}`);
-      if (res.data.success) {
+      if (res.data?.success) {
         setUsers(res.data.users || []);
       }
     } catch (err) {
@@ -61,25 +73,34 @@ export const UserManagementPage: React.FC = () => {
         status: editStatus,
       });
 
-      if (res.data.success) {
+      if (res.data?.success) {
+        toastSuccess(`Updated settings for ${editingUser.name}`);
         setEditingUser(null);
         fetchUsers();
       }
     } catch (err: any) {
-      alert(err.message || 'Error updating user');
+      toastError(err.message || 'Error updating user');
     }
   };
 
-  const handleDeleteUser = async (id: string, name: string) => {
-    if (confirm(`Are you sure you want to permanently delete user '${name}'? This action cannot be undone.`)) {
-      try {
-        const res = await api.delete(`/admin/users/${id}`);
-        if (res.data.success) {
-          fetchUsers();
-        }
-      } catch (err: any) {
-        alert(err.message || 'Error deleting user');
+  const handlePromptDelete = (id: string, name: string) => {
+    setUserToDelete({ id, name });
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    try {
+      const res = await api.delete(`/admin/users/${userToDelete.id}`);
+      if (res.data?.success) {
+        toastSuccess(`User ${userToDelete.name} permanently deleted.`);
+        fetchUsers();
       }
+    } catch (err: any) {
+      toastError(err.message || 'Error deleting user');
+    } finally {
+      setDeleteConfirmOpen(false);
+      setUserToDelete(null);
     }
   };
 
@@ -90,9 +111,16 @@ export const UserManagementPage: React.FC = () => {
         subtitle="Review community members, regulate account permissions, and grant credit adjustments"
       />
 
-      <div className="p-8 max-w-7xl mx-auto w-full space-y-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 sm:space-y-8">
+        <Breadcrumbs
+          items={[
+            { label: 'Administration', href: '/admin' },
+            { label: 'User Management' },
+          ]}
+        />
+
         {/* Search & Filter Controls */}
-        <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
           <div className="relative w-full md:w-80">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
@@ -100,15 +128,15 @@ export const UserManagementPage: React.FC = () => {
               placeholder="Search by name, email or location..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600"
             />
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end">
             <select
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
-              className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold"
+              className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
             >
               <option value="all">All Roles</option>
               <option value="learner">Learners</option>
@@ -120,7 +148,7 @@ export const UserManagementPage: React.FC = () => {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold"
+              className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
             >
               <option value="all">All Statuses</option>
               <option value="active">Active</option>
@@ -130,9 +158,9 @@ export const UserManagementPage: React.FC = () => {
         </div>
 
         {/* Users Table Card */}
-        <Card className="p-6">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+        <Card className="p-4 sm:p-6">
+          <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+            <table className="w-full text-left border-collapse min-w-[640px]">
               <thead>
                 <tr className="border-b border-stone-200/80 text-[11px] font-bold uppercase tracking-wider text-stone-400">
                   <th className="pb-3">User Profile</th>
@@ -144,85 +172,93 @@ export const UserManagementPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-xs">
-                {users.map((u) => (
-                  <tr key={u._id} className="hover:bg-stone-50/80 transition-colors">
-                    <td className="py-3.5">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={u.avatar}
-                          alt={u.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-stone-200"
-                        />
-                        <div>
-                          <h4 className="font-bold text-stone-900">{u.name}</h4>
-                          <p className="text-[11px] text-stone-400">{u.email}</p>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5">
-                      <Badge
-                        variant={
-                          u.role === 'admin'
-                            ? 'purple'
-                            : u.role === 'mentor'
-                            ? 'forest'
-                            : u.role === 'learner'
-                            ? 'blue'
-                            : 'orange'
-                        }
-                        size="sm"
-                      >
-                        {u.role}
-                      </Badge>
-                    </td>
-
-                    <td className="py-3.5 font-bold text-action">
-                      {u.credits} Credits
-                    </td>
-
-                    <td className="py-3.5">
-                      <span className="font-bold text-stone-800">{u.rating || 5.0} ★</span>
-                      <span className="text-[10px] text-stone-400 ml-1.5">({u.reputationScore} Rep)</span>
-                    </td>
-
-                    <td className="py-3.5">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                          u.status === 'active'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-rose-50 text-rose-700'
-                        }`}
-                      >
-                        {u.status === 'active' ? (
-                          <CheckCircle2 className="w-3 h-3" />
-                        ) : (
-                          <XCircle className="w-3 h-3" />
-                        )}
-                        {u.status}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 text-right space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenEdit(u)}
-                        title="Edit user details"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 text-stone-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteUser(u._id, u.name)}
-                        title="Delete user"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                      </Button>
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-stone-400">
+                      No users match the search criteria.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  users.map((u) => (
+                    <tr key={u._id} className="hover:bg-stone-50/80 transition-colors">
+                      <td className="py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            src={u.avatar}
+                            name={u.name}
+                            size="md"
+                          />
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-stone-900 truncate">{u.name}</h4>
+                            <p className="text-[11px] text-stone-400 truncate">{u.email}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5">
+                        <Badge
+                          variant={
+                            u.role === 'admin'
+                              ? 'purple'
+                              : u.role === 'mentor'
+                              ? 'forest'
+                              : u.role === 'learner'
+                              ? 'blue'
+                              : 'orange'
+                          }
+                          size="sm"
+                        >
+                          {u.role}
+                        </Badge>
+                      </td>
+
+                      <td className="py-3.5 font-bold text-action whitespace-nowrap">
+                        {u.credits} Credits
+                      </td>
+
+                      <td className="py-3.5 whitespace-nowrap">
+                        <span className="font-bold text-stone-800">{u.rating || 5.0} ★</span>
+                        <span className="text-[10px] text-stone-400 ml-1.5">({u.reputationScore} Rep)</span>
+                      </td>
+
+                      <td className="py-3.5 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                            u.status === 'active'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-rose-50 text-rose-700'
+                          }`}
+                        >
+                          {u.status === 'active' ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <XCircle className="w-3 h-3" />
+                          )}
+                          {u.status}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 text-right space-x-1 whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEdit(u)}
+                          title="Edit user details"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-stone-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePromptDelete(u._id, u.name)}
+                          title="Delete user"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -236,41 +272,34 @@ export const UserManagementPage: React.FC = () => {
         title={`Edit User: ${editingUser?.name}`}
       >
         <form onSubmit={handleSaveEdit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Account Role</label>
-            <select
-              value={editRole}
-              onChange={(e) => setEditRole(e.target.value as UserRole)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-semibold"
-            >
-              <option value="learner">Learner</option>
-              <option value="mentor">Mentor</option>
-              <option value="learner_mentor">Learner + Mentor</option>
-              <option value="admin">Administrator</option>
-            </select>
-          </div>
+          <Select
+            label="Account Role"
+            value={editRole}
+            onChange={(e) => setEditRole(e.target.value as UserRole)}
+            options={[
+              { value: 'learner', label: 'Learner' },
+              { value: 'mentor', label: 'Mentor' },
+              { value: 'learner_mentor', label: 'Learner + Mentor' },
+              { value: 'admin', label: 'Administrator' },
+            ]}
+          />
 
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Learning Credits Balance</label>
-            <input
-              type="number"
-              value={editCredits}
-              onChange={(e) => setEditCredits(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-semibold"
-            />
-          </div>
+          <Input
+            label="Learning Credits Balance"
+            type="number"
+            value={editCredits}
+            onChange={(e) => setEditCredits(Number(e.target.value))}
+          />
 
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Account Status</label>
-            <select
-              value={editStatus}
-              onChange={(e) => setEditStatus(e.target.value as 'active' | 'inactive')}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-semibold"
-            >
-              <option value="active">Active (Access Granted)</option>
-              <option value="inactive">Inactive (Suspended)</option>
-            </select>
-          </div>
+          <Select
+            label="Account Status"
+            value={editStatus}
+            onChange={(e) => setEditStatus(e.target.value as 'active' | 'inactive')}
+            options={[
+              { value: 'active', label: 'Active (Access Granted)' },
+              { value: 'inactive', label: 'Inactive (Suspended)' },
+            ]}
+          />
 
           <div className="pt-2 flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setEditingUser(null)}>
@@ -282,7 +311,20 @@ export const UserManagementPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete User Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={deleteConfirmOpen}
+        title="Permanently Delete User"
+        message={`Are you sure you want to permanently delete user '${userToDelete?.name}'? This action cannot be undone.`}
+        confirmText="Delete User"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteConfirmOpen(false);
+          setUserToDelete(null);
+        }}
+      />
     </div>
   );
 };
-

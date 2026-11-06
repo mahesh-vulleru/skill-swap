@@ -7,21 +7,21 @@ import {
   Award,
   ArrowRight,
   BookOpen,
-  Users,
-  Repeat,
   Video,
-  ExternalLink,
   Plus,
   Star,
-  CheckCircle,
 } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
+import { Avatar } from '../../components/common/Avatar';
+import { SkeletonStat, SkeletonCard } from '../../components/common/Skeleton';
+import { EmptyState } from '../../components/common/EmptyState';
+import { Breadcrumbs } from '../../components/common/Breadcrumbs';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { ISession, IUser, IMatchResult } from '../../types';
+import { ISession, IMatchResult } from '../../types';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -32,6 +32,7 @@ export const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchDashboardData = async () => {
       try {
         const [sessRes, matchRes] = await Promise.all([
@@ -39,20 +40,25 @@ export const DashboardPage: React.FC = () => {
           api.get('/matches'),
         ]);
 
-        if (sessRes.data.success) {
-          setUpcomingSessions(sessRes.data.sessions.slice(0, 3));
-        }
-        if (matchRes.data.success) {
-          setMatches(matchRes.data.matches.slice(0, 4));
+        if (isMounted) {
+          if (sessRes.data?.success) {
+            setUpcomingSessions(sessRes.data.sessions.slice(0, 3));
+          }
+          if (matchRes.data?.success) {
+            setMatches(matchRes.data.matches.slice(0, 4));
+          }
         }
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchDashboardData();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
@@ -62,20 +68,22 @@ export const DashboardPage: React.FC = () => {
         subtitle="Manage your peer learning exchanges, credits, and upcoming sessions"
       />
 
-      <div className="p-8 max-w-7xl mx-auto w-full space-y-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 sm:space-y-8">
+        <Breadcrumbs items={[{ label: 'Dashboard' }]} />
+
         {/* Welcome Banner Card */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-forest-800 to-forest-600 text-white p-8 shadow-elevated border border-forest-700/50">
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-forest-800 to-forest-600 text-white p-6 sm:p-8 shadow-elevated border border-forest-700/50">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-forest-900/60 border border-emerald-400/30 text-emerald-300 text-xs font-bold mb-3">
                 <Sparkles className="w-3.5 h-3.5 text-action" />
                 Active Knowledge Exchange Hub
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-['Plus_Jakarta_Sans']">
+              <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight font-['Plus_Jakarta_Sans']">
                 Ready to trade skills today?
               </h2>
-              <p className="mt-2 text-sm text-emerald-100/90 leading-relaxed">
-                You have <span className="font-bold text-action">{user?.credits || 0} Learning Credits</span>. Schedule a 1-on-1 session to level up your craft or teach a peer to earn more credits.
+              <p className="mt-2 text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+                You have <span className="font-bold text-action">{user?.credits ?? 0} Learning Credits</span>. Schedule a 1-on-1 session to level up your craft or teach a peer to earn more credits.
               </p>
             </div>
 
@@ -95,73 +103,82 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* 4 Key Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="flex items-center gap-4 p-5 hover:border-action/40">
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-action">
-              <Coins className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Credit Balance</p>
-              <div className="text-2xl font-extrabold text-stone-900 font-['Plus_Jakarta_Sans']">
-                {user?.credits || 0}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <SkeletonStat />
+            <SkeletonStat />
+            <SkeletonStat />
+            <SkeletonStat />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <Card className="flex items-center gap-4 p-5 hover:border-action/40">
+              <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-action flex-shrink-0">
+                <Coins className="w-6 h-6" />
               </div>
-              <Link to="/credits" className="text-[11px] font-bold text-action hover:underline mt-0.5 inline-block">
-                View Ledger & Perks →
-              </Link>
-            </div>
-          </Card>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide truncate">Credit Balance</p>
+                <div className="text-2xl font-extrabold text-stone-900 font-['Plus_Jakarta_Sans']">
+                  {user?.credits ?? 0}
+                </div>
+                <Link to="/credits" className="text-[11px] font-bold text-action hover:underline mt-0.5 inline-block">
+                  View Ledger & Perks →
+                </Link>
+              </div>
+            </Card>
 
-          <Card className="flex items-center gap-4 p-5 hover:border-forest-600/40">
-            <div className="w-12 h-12 rounded-2xl bg-forest-50 border border-forest-100 flex items-center justify-center text-forest-700">
-              <CalendarCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Upcoming Sessions</p>
-              <div className="text-2xl font-extrabold text-stone-900 font-['Plus_Jakarta_Sans']">
-                {upcomingSessions.length}
+            <Card className="flex items-center gap-4 p-5 hover:border-forest-600/40">
+              <div className="w-12 h-12 rounded-2xl bg-forest-50 border border-forest-100 flex items-center justify-center text-forest-700 flex-shrink-0">
+                <CalendarCheck className="w-6 h-6" />
               </div>
-              <Link to="/my-sessions" className="text-[11px] font-bold text-forest-700 hover:underline mt-0.5 inline-block">
-                View Schedule →
-              </Link>
-            </div>
-          </Card>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide truncate">Upcoming Sessions</p>
+                <div className="text-2xl font-extrabold text-stone-900 font-['Plus_Jakarta_Sans']">
+                  {upcomingSessions.length}
+                </div>
+                <Link to="/my-sessions" className="text-[11px] font-bold text-forest-700 hover:underline mt-0.5 inline-block">
+                  View Schedule →
+                </Link>
+              </div>
+            </Card>
 
-          <Card className="flex items-center gap-4 p-5 hover:border-forest-600/40">
-            <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Skills Offered / Wanted</p>
-              <div className="text-2xl font-extrabold text-stone-900 font-['Plus_Jakarta_Sans']">
-                {user?.skillsOffered?.length || 0} / {user?.skillsWanted?.length || 0}
+            <Card className="flex items-center gap-4 p-5 hover:border-forest-600/40">
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 flex-shrink-0">
+                <BookOpen className="w-6 h-6" />
               </div>
-              <Link to="/profile" className="text-[11px] font-bold text-sky-700 hover:underline mt-0.5 inline-block">
-                Manage Skills →
-              </Link>
-            </div>
-          </Card>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide truncate">Skills Offered / Wanted</p>
+                <div className="text-2xl font-extrabold text-stone-900 font-['Plus_Jakarta_Sans']">
+                  {user?.skillsOffered?.length || 0} / {user?.skillsWanted?.length || 0}
+                </div>
+                <Link to="/profile" className="text-[11px] font-bold text-sky-700 hover:underline mt-0.5 inline-block">
+                  Manage Skills →
+                </Link>
+              </div>
+            </Card>
 
-          <Card className="flex items-center gap-4 p-5 hover:border-purple-600/40">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-700">
-              <Award className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Reputation Score</p>
-              <div className="text-2xl font-extrabold text-stone-900 font-['Plus_Jakarta_Sans'] flex items-center gap-2">
-                {user?.reputationScore || 100}
-                <span className="text-xs font-bold text-amber-500 flex items-center">
-                  <Star className="w-3.5 h-3.5 fill-amber-400" /> {user?.rating || 5.0}
-                </span>
+            <Card className="flex items-center gap-4 p-5 hover:border-purple-600/40">
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-700 flex-shrink-0">
+                <Award className="w-6 h-6" />
               </div>
-              <Link to="/reviews" className="text-[11px] font-bold text-purple-700 hover:underline mt-0.5 inline-block">
-                Reviews & Badges →
-              </Link>
-            </div>
-          </Card>
-        </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide truncate">Reputation Score</p>
+                <div className="text-2xl font-extrabold text-stone-900 font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+                  {user?.reputationScore ?? 100}
+                  <span className="text-xs font-bold text-amber-500 flex items-center">
+                    <Star className="w-3.5 h-3.5 fill-amber-400" /> {user?.rating ?? 5.0}
+                  </span>
+                </div>
+                <Link to="/reviews" className="text-[11px] font-bold text-purple-700 hover:underline mt-0.5 inline-block">
+                  Reviews & Badges →
+                </Link>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* 2-Column Section: Skills Portfolio & Upcoming Sessions */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Left 2 Cols: Skills I Offer & Skills I Want */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
@@ -240,52 +257,72 @@ export const DashboardPage: React.FC = () => {
                 </Link>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {matches.map((match, i) => (
-                  <div key={i} className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 hover:bg-white hover:border-forest-600 transition-all flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <img
-                            src={match.user.avatar}
-                            alt={match.user.name}
-                            className="w-10 h-10 rounded-full object-cover border border-stone-200"
-                          />
-                          <div>
-                            <h4 className="text-xs font-bold text-stone-900">{match.user.name}</h4>
-                            <p className="text-[10px] text-stone-500">{match.user.location}</p>
+              {loading ? (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
+              ) : matches.length === 0 ? (
+                <EmptyState
+                  title="No Matches Found Yet"
+                  description="Add more skills you offer and want to your profile to let our matching algorithm find suitable exchange peers."
+                  action={{
+                    label: 'Update Profile Skills',
+                    onClick: () => navigate('/profile'),
+                  }}
+                  className="mt-4"
+                />
+              ) : (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {matches.map((match, i) => (
+                    <div
+                      key={i}
+                      className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 hover:bg-white hover:border-forest-600 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar
+                              src={match.user.avatar}
+                              name={match.user.name}
+                              size="sm"
+                            />
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-bold text-stone-900 truncate">{match.user.name}</h4>
+                              <p className="text-[10px] text-stone-500 truncate">{match.user.location || 'Remote'}</p>
+                            </div>
+                          </div>
+                          <Badge variant="forest" size="sm">
+                            {match.matchPercentage}% Match
+                          </Badge>
+                        </div>
+
+                        <div className="text-[11px] text-stone-600 space-y-1 mb-4">
+                          <div className="truncate">
+                            <strong className="text-forest-700">Offers:</strong> {match.matchedOfferSkill}
+                          </div>
+                          <div className="truncate">
+                            <strong className="text-action">Wants:</strong> {match.matchedWantedSkill}
                           </div>
                         </div>
-                        <Badge variant="forest" size="sm">
-                          {match.matchPercentage}% Match
-                        </Badge>
                       </div>
 
-                      <div className="text-[11px] text-stone-600 space-y-1 mb-4">
-                        <div className="truncate">
-                          <strong className="text-forest-700">Offers:</strong> {match.matchedOfferSkill}
-                        </div>
-                        <div className="truncate">
-                          <strong className="text-action">Wants:</strong> {match.matchedWantedSkill}
-                        </div>
+                      <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between">
+                        <span className="text-[10px] text-stone-500 flex items-center gap-1 font-bold">
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {match.user.rating || 4.9}
+                        </span>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate('/exchange-requests')}
+                        >
+                          Request Swap
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between">
-                      <span className="text-[10px] text-stone-500 flex items-center gap-1 font-bold">
-                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {match.user.rating || 4.9}
-                      </span>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => navigate('/exchange-requests')}
-                      >
-                        Request Swap
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
@@ -300,7 +337,12 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div className="mt-4 space-y-3">
-                {upcomingSessions.length === 0 ? (
+                {loading ? (
+                  <div className="space-y-3">
+                    <div className="h-20 bg-stone-100 rounded-xl animate-pulse" />
+                    <div className="h-20 bg-stone-100 rounded-xl animate-pulse" />
+                  </div>
+                ) : upcomingSessions.length === 0 ? (
                   <div className="p-6 text-center text-xs text-stone-400 bg-stone-50 rounded-xl">
                     No upcoming sessions. Schedule one with a peer!
                   </div>
@@ -352,4 +394,3 @@ export const DashboardPage: React.FC = () => {
     </div>
   );
 };
-
