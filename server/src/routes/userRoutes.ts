@@ -4,10 +4,10 @@ import { authenticate } from '../middleware/authMiddleware';
 
 const router = Router();
 
+// Specific routes before parameterized :id route
 router.get('/', getUsers);
 router.get('/recommended', getRecommendedPartners);
-router.get('/:id', getUserById);
 router.put('/profile', authenticate, updateProfile);
+router.get('/:id', getUserById);
 
 export default router;
-
